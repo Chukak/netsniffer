@@ -5,9 +5,11 @@ project(netsniffer LANGUAGES C)
 set(SOURCE_FILES
     src/main.c
     src/structures.c
+    src/printing.c
 )
 set(PRIVATE_HEADER_FILES
     src/structures.h
+    src/printing.h
 )
 set(PUBLIC_HEADER_FILES
 )
