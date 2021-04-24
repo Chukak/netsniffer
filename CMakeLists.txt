@@ -8,12 +8,14 @@ set(SOURCE_FILES
     src/printing.c
     src/utils.c
     src/sniffer.c
+    src/cmdargs.c
 )
 set(PRIVATE_HEADER_FILES
     src/structures.h
     src/printing.h
     src/utils.h
     src/sniffer.h
+    src/cmdargs.h
 )
 set(PUBLIC_HEADER_FILES
 )
@@ -22,7 +24,7 @@ set(C_PROJECT_COMPILE_FLAGS
 )
 set(C_PROJECT_LINK_FLAGS
 )
-set(C_PROJECT_COMPILE_DEFINITIONS
+set(C_PROJECT_COMPILE_DEFINITIONS -DEXE_BINARY_NAME=\"${PROJECT_NAME}\"
 )
 
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
