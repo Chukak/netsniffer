@@ -7,11 +7,13 @@ set(SOURCE_FILES
     src/structures.c
     src/printing.c
     src/utils.c
+    src/sniffer.c
 )
 set(PRIVATE_HEADER_FILES
     src/structures.h
     src/printing.h
     src/utils.h
+    src/sniffer.h
 )
 set(PUBLIC_HEADER_FILES
 )
