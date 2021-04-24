@@ -6,10 +6,12 @@ set(SOURCE_FILES
     src/main.c
     src/structures.c
     src/printing.c
+    src/utils.c
 )
 set(PRIVATE_HEADER_FILES
     src/structures.h
     src/printing.h
+    src/utils.h
 )
 set(PUBLIC_HEADER_FILES
 )
