@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.1)
 
 project(netsniffer LANGUAGES C)
 
+if (UNIX)
+    find_library(PTHREAD_LIBRARIES NAMES pthread REQUIRED)
+endif()
+
 set(SOURCE_FILES
     src/main.c
     src/structures.c
@@ -36,8 +40,11 @@ if (${CMAKE_BUILD_TYPE} MATCHES Debug)
     list(APPEND C_PROJECT_COMPILE_DEFINITIONS -DNDEBUG)
 endif()
 
-if (WIN32)
+if (UNIX)
+    list(APPEND C_PROJECT_LINK_FLAGS ${PTHREAD_LIBRARIES})
+elseif (WIN32)
     list(APPEND C_PROJECT_COMPILE_DEFINITIONS -D_WIN32_WINNT=0x0601)
+    list(APPEND C_PROJECT_LINK_FLAGS -lws2_32)
 endif()
 
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
