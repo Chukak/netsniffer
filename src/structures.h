@@ -15,8 +15,10 @@
 #define __HIDE_FIELD(f) f
 #endif
 
-#define IP_MAX_SIZE 15
+#define IFACE_MAX_SIZE 24
+#define IP_MAX_SIZE 16
 #define ETH_MAX_PACKET_SIZE 65536
+#define ADDRESS_MAX_SIZE IP_MAX_SIZE + 1 /*:*/ + 4 /* port */
 
 /**
  * @brief Protocol_t
@@ -171,5 +173,17 @@ Buffer_t GetPacketData(Buffer_t buf, size_t* offset);
  * @return A Protocol_t value.
  */
 Protocol_t GetProtocolFromString(const char* s);
+
+/**
+ * @brief Address_t
+ * Network address.
+ */
+typedef struct
+{
+  char IP[IP_MAX_SIZE];
+  uint16_t Port;
+} Address_t;
+
+#define ADDRESSES_MAX_COUNT 20
 
 #endif // __STRUCTURES_H

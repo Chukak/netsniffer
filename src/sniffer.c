@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -37,14 +38,17 @@ static int WSAIoctlEnableMode = 1;
 static unsigned long WSAIoctlSupperss;
 #endif
 
-int SnifferInit(Sniffer_t* s, Protocol_t p, const char* addr, ProcessingPacketHandler_t handler, HandlerArgs_t args)
+#define LOOPBACK_ADDRESS "127.0.0.1"
+
+int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args)
 {
   assert(("Cannot init sniffer ('Sniffer_t'): s == NULL.", s != NULL));
 
   s->SniffStart = 0;
   s->SniffEnd = 0;
 
-  ParseAddressString(addr, &s->Interface, &s->IP, &s->Port, &s->ErrorMessage);
+  s->AddressesCount = 0;
+  strncpy(s->Interface, iface, IFACE_MAX_SIZE);
 
   s->Protocol = p;
   s->RecvCount = 0;
@@ -110,6 +114,32 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* addr, ProcessingPacketHa
   return 0;
 }
 
+int SnifferAddAddress(Sniffer_t* s, const char* addr)
+{
+  if (s == NULL)
+    return -1;
+
+  if (s->AddressesCount >= ADDRESSES_MAX_COUNT) {
+    FormatStringBuffer(&s->ErrorMessage,
+                       "Max addresses count %d (max value: %d).",
+                       s->AddressesCount,
+                       ADDRESSES_MAX_COUNT);
+    return -1;
+  }
+
+  char* ip;
+  int port;
+  if (ParseAddressString(addr, &ip, &port, &s->ErrorMessage) < 0)
+    return -1;
+
+  int currentIndex = s->AddressesCount++;
+  strncpy(s->Addresses[currentIndex].IP, ip, IP_MAX_SIZE);
+  s->Addresses[currentIndex].Port = (uint16_t) port;
+
+  free(ip);
+  return 0;
+}
+
 int SnifferStart(Sniffer_t* s)
 {
   if (s == NULL)
@@ -145,45 +175,54 @@ int SnifferStart(Sniffer_t* s)
     szSockAddress = sizeof(struct sockaddr_ll);
   } else {
 #elif _WIN32
-  PIP_ADAPTER_INFO adaptlist = malloc(sizeof(IP_ADAPTER_INFO)), adaptlistNext = NULL;
-  assert(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
-  ULONG adaptlistBytes = sizeof(IP_ADAPTER_INFO);
-  ULONG getAdaptListRetCode = NO_ERROR;
-  do {
-    getAdaptListRetCode = GetAdaptersInfo(adaptlist, &adaptlistBytes);
+  char ifaceIpAddress[IP_MAX_SIZE];
+  long ifaceIndex = strtol(s->Interface, NULL, 10);
+  if (ifaceIndex < 0) {
+    FormatStringBuffer(&s->ErrorMessage, "Invalid interface index: %s.", s->Interface);
+    return -1;
+  }
 
-    switch (getAdaptListRetCode) {
-    case ERROR_BUFFER_OVERFLOW: {
-      FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): Error allocating memore needed to call.");
-      adaptlist = realloc(adaptlist, adaptlistBytes);
-      assert(("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
-      break;
+  if (ifaceIndex == 0) {
+    strncpy(ifaceIpAddress, LOOPBACK_ADDRESS, IP_MAX_SIZE);
+  } else {
+    PIP_ADAPTER_INFO adaptlist = malloc(sizeof(IP_ADAPTER_INFO)), adaptlistNext = NULL;
+    assert(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+    ULONG adaptlistBytes = sizeof(IP_ADAPTER_INFO);
+    ULONG getAdaptListRetCode = NO_ERROR;
+    do {
+      getAdaptListRetCode = GetAdaptersInfo(adaptlist, &adaptlistBytes);
+
+      switch (getAdaptListRetCode) {
+      case ERROR_BUFFER_OVERFLOW: {
+        FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): Error allocating memore needed to call.");
+        adaptlist = realloc(adaptlist, adaptlistBytes);
+        assert(("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+        break;
+      }
+      case NO_ERROR:
+        break;
+      default: {
+        FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): %s.", GetLastErrorMessage());
+        free(adaptlist);
+        return -1;
+      }
+      }
+    } while (getAdaptListRetCode != NO_ERROR);
+
+    bool ifaceIpAddressFound = false;
+    for (adaptlistNext = adaptlist; adaptlistNext != NULL; adaptlistNext = adaptlist->Next) {
+      if ((DWORD) ifaceIndex == adaptlistNext->Index) {
+        ifaceIpAddressFound = true;
+        strncpy(ifaceIpAddress, adaptlistNext->IpAddressList.IpAddress.String, IP_MAX_SIZE);
+        break;
+      }
     }
-    case NO_ERROR:
-      break;
-    default: {
-      FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): %s.", GetLastErrorMessage());
-      free(adaptlist);
+
+    free(adaptlist);
+    if (!ifaceIpAddressFound) {
+      FormatStringBuffer(&s->ErrorMessage, "IP address for the interface index %s not found.", s->Interface);
       return -1;
     }
-    }
-  } while (getAdaptListRetCode != NO_ERROR);
-
-  char ifaceIpAddress[IP_MAX_SIZE];
-  DWORD ifaceIndex = (DWORD) atoi(s->Interface);
-  BOOL ifaceIpAddressFound = FALSE;
-  for (adaptlistNext = adaptlist; adaptlistNext != NULL; adaptlistNext = adaptlist->Next) {
-    if (ifaceIndex == adaptlistNext->Index) {
-      ifaceIpAddressFound = TRUE;
-      strncpy(ifaceIpAddress, adaptlistNext->IpAddressList.IpAddress.String, IP_MAX_SIZE);
-      break;
-    }
-  }
-  free(adaptlist);
-
-  if (!ifaceIpAddressFound) {
-    FormatStringBuffer(&s->ErrorMessage, "IP address for the interface index %s not found.", s->Interface);
-    return -1;
   }
 #endif
     // clang-format off
@@ -195,7 +234,7 @@ int SnifferStart(Sniffer_t* s)
 #elif _WIN32
     in->sin_addr.s_addr = inet_addr(ifaceIpAddress); 
 #endif
-    in->sin_port = htons((u_short) s->Port);
+    in->sin_port = 0;
 
     s->__sockAddr = in;
     szSockAddress = sizeof(struct sockaddr_in);
@@ -281,7 +320,7 @@ int SnifferProcessNextPacket(Sniffer_t* s)
         if (s->Protocol != Protocol_ANY && iphdr->Protocol != s->Protocol)
           break;
 
-        char sourceIP[IP_MAX_SIZE], destIP[IP_MAX_SIZE];
+        char sourceIP[IP_MAX_SIZE] = "\0", destIP[IP_MAX_SIZE] = "\0";
         {
           static struct sockaddr_in src, dst;
           memset(&src, 0, sizeof(src));
@@ -293,8 +332,17 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           strncpy(destIP, inet_ntoa(dst.sin_addr), IP_MAX_SIZE);
         }
 
-        // TODO: Direction
-        if (s->IP[0] != '\0' && strcmp(sourceIP, s->IP) != 0 && strcmp(destIP, s->IP) != 0)
+        bool ipFound = false;
+        for (int i = 0; i < s->AddressesCount; ++i) {
+          // TODO: Direction
+          if (strcmp(s->Addresses[i].IP, "any") == 0 || strcmp(s->Addresses[i].IP, sourceIP) == 0 ||
+              strcmp(s->Addresses[i].IP, destIP) == 0) {
+            ipFound = true;
+            break;
+          }
+        }
+
+        if (!ipFound)
           break;
 
         int sourcePort = 0, destPort = 0;
@@ -317,7 +365,15 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           }
         }
 
-        if (s->Port != 0 && s->Port != sourcePort && s->Port != destPort)
+        bool portFound = false;
+        for (int i = 0; i < s->AddressesCount; ++i) {
+          if (s->Addresses->Port == 0 || s->Addresses->Port == sourcePort || s->Addresses->Port == destPort) {
+            portFound = true;
+            break;
+          }
+        }
+
+        if (!portFound)
           break;
 
         if (s->__handler) {
@@ -380,7 +436,5 @@ void SnifferClear(Sniffer_t* s)
   free(s->__sockAddr);
   free(s->__buf);
 
-  free(s->IP);
-  free(s->Interface);
   free(s->ErrorMessage);
 }

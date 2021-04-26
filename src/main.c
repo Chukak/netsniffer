@@ -54,10 +54,18 @@ int main(int argc, char** argv)
   PacketBuffersInit(&buffers);
 
   Sniffer_t sniffer;
-  if (SnifferInit(&sniffer, args.Protocol, args.Address, PrintPacket, &buffers) < 0) {
+  if (SnifferInit(&sniffer, args.Protocol, args.Interface, PrintPacket, &buffers) < 0) {
     printf("%s\n", sniffer.ErrorMessage);
     SnifferClear(&sniffer);
     return 1;
+  }
+
+  for (int i = 0; i < args.AddressesCount; ++i) {
+    if (SnifferAddAddress(&sniffer, args.Addresses[i]) < 0) {
+      printf("%s\n", sniffer.ErrorMessage);
+      SnifferClear(&sniffer);
+      return 1;
+    }
   }
 
   if (SnifferStart(&sniffer) < 0) {
@@ -84,6 +92,7 @@ int main(int argc, char** argv)
 #endif
   }
 
+  // TODO: mutex
   if (SnifferStop(&sniffer) < 0) {
     printf("%s\n", sniffer.ErrorMessage);
   }

@@ -19,8 +19,10 @@ typedef enum
  */
 typedef struct
 {
-  const char* Address;
   Protocol_t Protocol;
+  char Interface[IFACE_MAX_SIZE];
+  char Addresses[ADDRESSES_MAX_COUNT][ADDRESS_MAX_SIZE];
+  int AddressesCount;
 } CmdArgs_t;
 /**
  * @brief ParseCommandLineArgs

@@ -60,53 +60,41 @@ const char* GetLastErrorMessage()
   return ErrorMessageBuffer;
 }
 
-int ParseAddressString(const char* address, char** iface, char** ip, int* port, char** error)
+int ParseAddressString(const char* address, char** ip, int* port, char** error)
 {
   size_t addrSize = strlen(address);
-  char *source = malloc(sizeof(char) * addrSize + 1), *sourceOrig = source;
+  char* source = malloc(sizeof(char) * addrSize + 1);
   strncpy(source, address, addrSize);
-  char** args[] = {iface, ip};
-  int countArgs = 2;
-  for (int i = 0; i < countArgs; ++i) {
-    char* delimeter = strstr(source, ":");
-    if (delimeter == NULL) {
-      FormatStringBuffer(error,
-                         "Invalid address: %s. Address must be in the format "
-#ifdef __linux__
-                         "\"INTERFACE:IP:PORT\""
-#elif _WIN32
-                         "\"INTERFACE-INDEX:IP:PORT\""
-#endif
-                         ". Invalid part: %s",
-                         address,
-                         source);
-      free(sourceOrig);
-      return -1;
-    }
 
-    int size = (int) (delimeter - source);
-    if (size <= 0) {
-      FormatStringBuffer(error, "Invalid interface in the address '%s'.", address);
-      free(source);
-      return -1;
-    }
-
-    char** arg = args[i];
-    *arg = malloc(sizeof(char) * (size_t) size + 1);
-    assert(("Cannot initialize a new string: realloc returned 'NULL'.", *arg != NULL));
-    strncpy(*arg, source, (size_t) size);
-    (*arg)[size] = '\0';
-
-    source = delimeter + 1;
-  }
-
-  *port = (int) strtol(source, NULL, 10);
-  if (*port < 0) {
-    FormatStringBuffer(error, "Invalid port '%d'.", port);
-    free(sourceOrig);
+  char* delimeter = strstr(source, ":");
+  if (delimeter == NULL) {
+    FormatStringBuffer(error,
+                       "Invalid address: %s. Address must be in the format \"IP:PORT\". Invalid part: %s",
+                       address,
+                       source);
+    free(source);
     return -1;
   }
 
-  free(sourceOrig);
+  int ipSize = (int) (delimeter - source);
+  if (ipSize <= 0) {
+    FormatStringBuffer(error, "Invalid address '%s'.", address);
+    free(source);
+    return -1;
+  }
+
+  *ip = malloc(sizeof(char) * (size_t) ipSize + 1);
+  assert(("Cannot initialize a new string: realloc returned 'NULL'.", *ip != NULL));
+  strncpy(*ip, source, (size_t) ipSize);
+  (*ip)[ipSize] = '\0';
+
+  *port = (int) strtol(source + ipSize, NULL, 10);
+  if (*port < 0) {
+    FormatStringBuffer(error, "Invalid port '%d'.", port);
+    free(source);
+    return -1;
+  }
+
+  free(source);
   return 0;
 }
