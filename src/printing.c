@@ -35,14 +35,14 @@ void PacketBuffersDelete(PacketBuffers_t* p)
   free(p->IPHeaderBuffer);
 }
 
-void PrintPacketToBuffers(Buffer_t packetBuffer, size_t size, PacketBuffers_t* buffers)
+void PrintPacketToBuffers(Buffer_t packetBuffer, size_t size, PacketBuffers_t* buffers, TimeInfo_t* t)
 {
   memset(buffers->IPHeaderBuffer, 0, IP_HEADER_BUFFER_SUFFICIENT_SIZE);
   memset(buffers->ProtocolHeaderBuffer, 0, PROTOCOL_HEADER_BUFFER_SUFFICIENT_SIZE);
   memset(buffers->DataBuffer, 0, DATA_BUFFER_SUFFICIENT_SIZE);
 
   IPHeader_t* iphdr = GetIPHeader(packetBuffer);
-  PrintPacketIPHeader(packetBuffer, &buffers->IPHeaderBuffer, IP_HEADER_BUFFER_SUFFICIENT_SIZE);
+  PrintPacketIPHeader(packetBuffer, &buffers->IPHeaderBuffer, IP_HEADER_BUFFER_SUFFICIENT_SIZE, t);
   switch (iphdr->Protocol) {
   case Protocol_ICMP: {
     PrintPacketICMPHeader(packetBuffer, &buffers->ProtocolHeaderBuffer, PROTOCOL_HEADER_BUFFER_SUFFICIENT_SIZE);
@@ -96,7 +96,7 @@ void PrintPacketETHHeader(Buffer_t packetBuffer, char** ethHeaderBuffer, size_t 
 }
 #endif
 
-void PrintPacketIPHeader(Buffer_t packetBuffer, char** ipHeaderBuffer, size_t ipHeaderBufferSize)
+void PrintPacketIPHeader(Buffer_t packetBuffer, char** ipHeaderBuffer, size_t ipHeaderBufferSize, TimeInfo_t* t)
 {
   IPHeader_t* iphdr = GetIPHeader(packetBuffer);
 
@@ -127,6 +127,12 @@ void PrintPacketIPHeader(Buffer_t packetBuffer, char** ipHeaderBuffer, size_t ip
   length += snprintf(*ipHeaderBuffer + length, ipHeaderBufferSize, "| Checksum: %u\n", ntohs(iphdr->Checksum));
   length += snprintf(*ipHeaderBuffer + length, ipHeaderBufferSize, "| Source IP: %s\n", inet_ntoa(source.sin_addr));
   length += snprintf(*ipHeaderBuffer + length, ipHeaderBufferSize, "| Destination IP: %s\n", inet_ntoa(dest.sin_addr));
+  if (t != NULL) {
+    char* time;
+    TimeInfoToString(t, &time);
+    length += snprintf(*ipHeaderBuffer + length, ipHeaderBufferSize, "| Time: %s\n", time);
+    free(time);
+  }
   snprintf(*ipHeaderBuffer + length, ipHeaderBufferSize, "\n");
 }
 

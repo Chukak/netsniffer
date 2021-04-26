@@ -26,7 +26,7 @@ typedef DWORD ThreadReturnValue_t;
 #define FAIL_THREAD FALSE
 #endif
 
-static void PrintPacket(void* owner, Buffer_t buffer, size_t size, HandlerArgs_t args);
+static PROCESSING_HANDLER_FUNC(PrintPacket, owner, buffer, size, time, args);
 static ThreadReturnValue_t StartSniffingPackets(ThreadArgs_t args);
 
 static atomic_int IsRunning = 0;
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
   return 0;
 }
 
-void PrintPacket(void* owner, Buffer_t buffer, size_t size, HandlerArgs_t args)
+PROCESSING_HANDLER_FUNC(PrintPacket, owner, buffer, size, time, args)
 {
   if (args == NULL)
     return;
@@ -162,7 +162,7 @@ void PrintPacket(void* owner, Buffer_t buffer, size_t size, HandlerArgs_t args)
   }
 #endif
 
-  PrintPacketToBuffers(buffer + hdroffset, size, buffers);
+  PrintPacketToBuffers(buffer + hdroffset, size, buffers, &time);
 
   printf("%s %s %s", buffers->IPHeaderBuffer, buffers->ProtocolHeaderBuffer, buffers->DataBuffer);
 }

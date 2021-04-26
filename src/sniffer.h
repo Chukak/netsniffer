@@ -7,7 +7,7 @@
 #define SOCKET_WAITING_TIMEOUT_MS 1000
 
 typedef void* HandlerArgs_t;
-typedef void (*ProcessingPacketHandler_t)(void*, Buffer_t, size_t, HandlerArgs_t);
+typedef void (*ProcessingPacketHandler_t)(void*, Buffer_t, size_t, TimeInfo_t, HandlerArgs_t);
 /**
  * @brief Sniffer_t
  * Implements a sniffer object on specified address.
@@ -36,6 +36,9 @@ typedef struct
   HandlerArgs_t __args;
   int8_t __running;
 } Sniffer_t;
+
+#define PROCESSING_HANDLER_FUNC(funcname, owner, buffer, size, timestamp, args)                                        \
+  void funcname(void* owner, Buffer_t buffer, size_t size, TimeInfo_t timestamp, HandlerArgs_t args)
 
 /**
  * @brief SnifferInit

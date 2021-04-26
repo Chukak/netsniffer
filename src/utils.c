@@ -24,7 +24,7 @@ static
 #endif
         ErrorMessageBufferSize = 0;
 
-#define TIME_BUFFER_MAX_SIZE 8
+#define TIME_BUFFER_MAX_SIZE 9
 static const char* TIME_FORMAT = "%02d:%02d:%02d";
 
 void FormatStringBuffer(char** buffer, const char* msg, ...)
@@ -113,7 +113,7 @@ int TimestampToString(long unsigned int time, char** buffer)
 #elif _WIN32
   gmtime_s(&buf, &time);
 #endif
-  *buffer = malloc(sizeof(char) * TIME_BUFFER_MAX_SIZE + 1);
+  *buffer = malloc(sizeof(char) * TIME_BUFFER_MAX_SIZE);
   assert(("Cannot initialize a new string: realloc returned 'NULL'.", *buffer != NULL));
-  return snprintf(*buffer, TIME_BUFFER_MAX_SIZE + 1, TIME_FORMAT, buf.tm_hour, buf.tm_min, buf.tm_sec);
+  return snprintf(*buffer, TIME_BUFFER_MAX_SIZE, TIME_FORMAT, buf.tm_hour, buf.tm_min, buf.tm_sec);
 }

@@ -186,4 +186,34 @@ typedef struct
 
 #define ADDRESSES_MAX_COUNT 20
 
+/**
+ * @brief Timestamp_t
+ * Stores information about time.
+ */
+typedef struct
+{
+  int Hours;
+  int Minutes;
+  int Seconds;
+  int Milliseconds;
+  time_t TimestampSec;
+  uint32_t TimestampNanosec;
+} TimeInfo_t;
+
+/**
+ * @brief GetTimeInfoNow
+ * Gets the current time and stores it in the first argument (TimeInfo_t structure).
+ * @param ti The pointer to the TimeInfo_t structure
+ * @param error The error message (if occurred)
+ * @return -1 if an error occurred, otherwise 0.
+ */
+int GetTimeInfoNow(TimeInfo_t* ti, char** error);
+/**
+ * @brief TimeInfoToString
+ * Convert TimeInfo_t to a string.
+ * @param ti The pointer to the TimeInfo_t structure
+ * @param buffer The pointer to the result.
+ */
+void TimeInfoToString(TimeInfo_t* ti, char** buffer);
+
 #endif // __STRUCTURES_H

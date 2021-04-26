@@ -412,7 +412,10 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           break;
 
         if (s->__handler) {
-          s->__handler(s, s->__buf, (size_t) recvBytes, s->__args);
+          TimeInfo_t tinfo;
+          GetTimeInfoNow(&tinfo, &s->ErrorMessage);
+
+          s->__handler(s, s->__buf, (size_t) recvBytes, tinfo, s->__args);
         } else {
           FormatStringBuffer(&s->ErrorMessage, "Handler to processing network packets == 'NULL'.");
           return -1;

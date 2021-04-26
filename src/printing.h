@@ -36,12 +36,14 @@ void PacketBuffersDelete(PacketBuffers_t* p);
 
 /**
  * @brief PrintPacketToBuffers
- * Prints the received network packet to the buffer.
+ * Prints the received network packet to the buffer. It the third argument is NULL, the result will not contain the time
+ * in the IP header.
  * @param packetBuffer The network packet without the ETH header
  * @param size Packet size
  * @param buffers The pointer to buffers (PacketBuffers_t*)
+ * @param t The pointer to the TimeInfo_t
  */
-void PrintPacketToBuffers(Buffer_t packetBuffer, size_t size, PacketBuffers_t* buffers);
+void PrintPacketToBuffers(Buffer_t packetBuffer, size_t size, PacketBuffers_t* buffers, TimeInfo_t* t);
 #ifndef _WIN32
 /**
  * @brief PrintPacketETHHeader
@@ -55,12 +57,14 @@ void PrintPacketETHHeader(Buffer_t packetBuffer, char** ethHeaderBuffer, size_t 
 #endif
 /**
  * @brief PrintPacketIPHeader
- * Prints the IP header of this packet. But, useful to use the PrintPacketBuffers() function instead of it.
+ * Prints the IP header of this packet. But, useful to use the PrintPacketBuffers() function instead of it. It the third
+ * argument is NULL, the result will not contain the time in the IP header.
  * @param packetBuffer The network packet without the ETH header
  * @param ipHeaderBuffer The pointer to the buffer for the IP header part of this packet
  * @param ipHeaderBufferSize The size of IP header buffer
+ * @param t The pointer to the TimeInfo_t
  */
-void PrintPacketIPHeader(Buffer_t packetBuffer, char** ipHeaderBuffer, size_t ipHeaderBufferSize);
+void PrintPacketIPHeader(Buffer_t packetBuffer, char** ipHeaderBuffer, size_t ipHeaderBufferSize, TimeInfo_t* t);
 /**
  * @brief PrintPacketICMPHeader
  * Prints the ICMP header of this packet. But, useful to use the PrintPacketBuffers() function instead of it.
