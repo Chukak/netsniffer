@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <time.h>
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -45,15 +46,13 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketH
 {
   assert(("Cannot init sniffer ('Sniffer_t'): s == NULL.", s != NULL));
 
-  s->SniffStart = 0;
-  s->SniffEnd = 0;
+  s->SniffStartTime = 0;
+  s->SniffEndTime = 0;
 
   s->AddressesCount = 0;
   strncpy(s->Interface, iface, IFACE_MAX_SIZE);
 
   s->Protocol = p;
-  s->RecvCount = 0;
-  s->SentCount = 0;
   s->ErrorMessage = NULL;
 
 #ifdef _WIN32
@@ -278,6 +277,8 @@ int SnifferStart(Sniffer_t* s)
 #endif
   s->__running = 1;
 
+  s->SniffStartTime = time(0);
+
   return 0;
 }
 
@@ -473,6 +474,9 @@ int SnifferStop(Sniffer_t* s)
 #endif
 
   s->__running = 0;
+
+  s->SniffEndTime = time(0);
+
   return 0;
 }
 

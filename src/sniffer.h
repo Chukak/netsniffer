@@ -14,14 +14,12 @@ typedef void (*ProcessingPacketHandler_t)(void*, Buffer_t, size_t, HandlerArgs_t
  */
 typedef struct
 {
-  uint64_t SniffStart;                      //! Sniffer start timestamp (not used, always non-initialized)
-  uint64_t SniffEnd;                        //! Sniffer end timestamp (not used, always non-initialized)
+  time_t SniffStartTime;                    //! Sniffer start timestamp (not used, always non-initialized)
+  time_t SniffEndTime;                      //! Sniffer end timestamp (not used, always non-initialized)
   Address_t Addresses[ADDRESSES_MAX_COUNT]; //! Addresses in the format 'IP:PORT'
   uint16_t AddressesCount;                  //! Addresses count
   char Interface[IFACE_MAX_SIZE];           //! Interface name (On Windows this field is interface index )
   Protocol_t Protocol;                      //! Protocol number value
-  uint32_t RecvCount;                       //! Number of received packets
-  uint32_t SentCount;                       //! NUmber of sent packets
   char* ErrorMessage;                       //! Error messages
   // private fields
 #ifdef __linux__

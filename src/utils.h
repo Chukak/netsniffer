@@ -23,5 +23,12 @@ void FormatStringBuffer(char** buffer, const char* msg, ...);
  * @return -1 if an error occurred, otherwise 0.
  */
 int ParseAddressString(const char* address, char** ip, int* port, char** error);
-
+/**
+ * @brief TimestampToString
+ * Convert a timestamp value to the string using format 'H24:MM:SS'.
+ * @param time A timestamp value
+ * @param buffer The string buffer
+ * @return Number of bytes written.
+ */
+int TimestampToString(long unsigned int time, char** buffer);
 #endif // __UTILS_H
