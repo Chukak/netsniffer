@@ -2,6 +2,7 @@
 #define __SNIFFER_H
 
 #include "structures.h"
+#include <stdbool.h>
 
 #define SOCKET_WAITING_TIMEOUT_MS 1000
 
@@ -22,8 +23,10 @@ typedef struct
   uint32_t RecvCount;                       //! Number of received packets
   uint32_t SentCount;                       //! NUmber of sent packets
   char* ErrorMessage;                       //! Error messages
+  // private fields
 #ifdef __linux__
   int __sock;
+  int __promiscEnabled;
 #elif _WIN32
   SOCKET __sock;
   WSADATA __wsadata;
@@ -83,5 +86,14 @@ int SnifferStop(Sniffer_t* s);
  * @param s The pointer to the sniffer object
  */
 void SnifferClear(Sniffer_t* s);
+
+#ifdef __linux__
+/**
+ * @brief SetPromiscMode
+ * Enables or disables the promiscious mode on the interface.
+ * @param enable Enable the promiscious mode
+ */
+void SetPromiscMode(bool enable);
+#endif
 
 #endif // __SNIFFER_H

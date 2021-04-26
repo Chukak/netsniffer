@@ -13,6 +13,7 @@ ParseArgsReturnCode_t ParseCommandLineArgs(int argc, char** argv, CmdArgs_t* arg
     return CmdArgs_ERROR;
   }
 
+  args->PromiscMode = false;
   args->Protocol = Protocol_ANY;
   args->Interface[0] = '\0';
 
@@ -25,6 +26,10 @@ ParseArgsReturnCode_t ParseCommandLineArgs(int argc, char** argv, CmdArgs_t* arg
         return CmdArgs_ERROR;
       }
       args->Protocol = GetProtocolFromString(argv[++i]);
+#ifdef __linux__
+    } else if (strcmp(arg, "-enable-promisc-mode") == 0) {
+      args->PromiscMode = true;
+#endif
     } else if (strcmp(arg, "-help") == 0 || strcmp(arg, "--help") == 0 /* compatibility */) {
       return CmdArgs_PRINT_HELP;
     } else {
@@ -68,6 +73,9 @@ void PrintHelp()
                         "Sniffs network traffic at the specified address. \n"
                         "Arguments: \n"
                         "\t-protocol [ICMP, TCP, UDP]\t\tNetwork protocol. \n"
+#ifdef __linux__
+                        "\t-enable-promisc-mode      \t\tEnable the promiscious mode on the interface.\n"
+#endif
                         "\n"
                         "To sniffing from any IP and port, use address: any:0.\n"
 #ifdef _WIN32

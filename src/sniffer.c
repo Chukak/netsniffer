@@ -5,7 +5,6 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -33,6 +32,7 @@
 
 #ifdef __linux__
 #define SOCKET_ERROR_CODE -1
+static bool PromiscModeEnabled = false;
 #elif _WIN32
 #define SOCKET_ERROR_CODE SOCKET_ERROR
 static int WSAIoctlEnableMode = 1;
@@ -87,6 +87,7 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketH
       return -1;
     }
   }
+  s->__promiscEnabled = false;
 #elif _WIN32
   if (WSAIoctl(s->__sock,
                (DWORD) FIONBIO,
@@ -242,20 +243,24 @@ int SnifferStart(Sniffer_t* s)
   free(sockAddress);
 
 #ifdef __linux__
-  memset(&sockSettings, 0, sizeof(sockSettings));
-  strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
-  sockSettings.ifr_ifindex = s->__ifindex;
-  if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &sockSettings) < 0) {
-    FormatStringBuffer(&s->ErrorMessage, "Cannot get socket mode: %s", GetLastErrorMessage());
-    return -1;
-  }
-
-  if (!(sockSettings.ifr_flags & IFF_PROMISC)) {
-    sockSettings.ifr_flags |= IFF_PROMISC;
-    if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &sockSettings) < 0) {
-      FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+  if (PromiscModeEnabled && !s->__promiscEnabled) {
+    memset(&sockSettings, 0, sizeof(sockSettings));
+    strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
+    sockSettings.ifr_ifindex = s->__ifindex;
+    if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &sockSettings) < 0) {
+      FormatStringBuffer(&s->ErrorMessage, "Cannot get socket mode: %s", GetLastErrorMessage());
       return -1;
     }
+
+    if (!(sockSettings.ifr_flags & IFF_PROMISC)) {
+      sockSettings.ifr_flags |= IFF_PROMISC;
+      if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &sockSettings) < 0) {
+        FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+        return -1;
+      }
+    }
+
+    s->__promiscEnabled = true;
   }
 #elif _WIN32
   if (WSAIoctl(s->__sock,
@@ -436,20 +441,24 @@ int SnifferStop(Sniffer_t* s)
   }
 
 #ifdef __linux__
-  struct ifreq sockSettings = {0};
-  strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
-  sockSettings.ifr_ifindex = s->__ifindex;
-  if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &sockSettings) < 0) {
-    FormatStringBuffer(&s->ErrorMessage, "Cannot get socket mode: %s", GetLastErrorMessage());
-    return -1;
-  }
-
-  if (sockSettings.ifr_flags & IFF_PROMISC) {
-    sockSettings.ifr_flags &= ~IFF_PROMISC;
-    if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &sockSettings) < 0) {
-      FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+  if (PromiscModeEnabled && s->__promiscEnabled) {
+    struct ifreq sockSettings = {0};
+    strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
+    sockSettings.ifr_ifindex = s->__ifindex;
+    if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &sockSettings) < 0) {
+      FormatStringBuffer(&s->ErrorMessage, "Cannot get socket mode: %s", GetLastErrorMessage());
       return -1;
     }
+
+    if (sockSettings.ifr_flags & IFF_PROMISC) {
+      sockSettings.ifr_flags &= ~IFF_PROMISC;
+      if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &sockSettings) < 0) {
+        FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+        return -1;
+      }
+    }
+
+    s->__promiscEnabled = false;
   }
 #endif
 
@@ -475,4 +484,9 @@ void SnifferClear(Sniffer_t* s)
   free(s->__buf);
 
   free(s->ErrorMessage);
+}
+
+void SetPromiscMode(bool enable)
+{
+  PromiscModeEnabled = enable;
 }

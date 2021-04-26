@@ -2,6 +2,7 @@
 #define __CMDARGS_H
 
 #include "structures.h"
+#include <stdbool.h>
 
 /**
  * @brief ParseArgsReturnCode_t
@@ -19,6 +20,7 @@ typedef enum
  */
 typedef struct
 {
+  bool PromiscMode;
   Protocol_t Protocol;
   char Interface[IFACE_MAX_SIZE];
   char Addresses[ADDRESSES_MAX_COUNT][ADDRESS_MAX_SIZE];
