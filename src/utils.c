@@ -65,13 +65,8 @@ int ParseAddressString(const char* address, char** iface, char** ip, int* port, 
   size_t addrSize = strlen(address);
   char *source = malloc(sizeof(char) * addrSize + 1), *sourceOrig = source;
   strncpy(source, address, addrSize);
-#ifdef __linux__
   char** args[] = {iface, ip};
   int countArgs = 2;
-#elif _WIN32
-  char** args[] = {ip};
-  int countArgs = 1;
-#endif
   for (int i = 0; i < countArgs; ++i) {
     char* delimeter = strstr(source, ":");
     if (delimeter == NULL) {
@@ -80,7 +75,7 @@ int ParseAddressString(const char* address, char** iface, char** ip, int* port, 
 #ifdef __linux__
                          "\"INTERFACE:IP:PORT\""
 #elif _WIN32
-                         "\"IP:PORT\""
+                         "\"INTERFACE-INDEX:IP:PORT\""
 #endif
                          ". Invalid part: %s",
                          address,
@@ -111,11 +106,6 @@ int ParseAddressString(const char* address, char** iface, char** ip, int* port, 
     free(sourceOrig);
     return -1;
   }
-#ifdef _WIN32
-  *iface = malloc(sizeof(char) * 1);
-  assert(("Cannot initialize a new string: realloc returned 'NULL'.", *iface != NULL));
-  iface[0] = '\0';
-#endif
 
   free(sourceOrig);
   return 0;

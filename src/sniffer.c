@@ -26,6 +26,7 @@
 #include <ws2def.h>
 #include <mstcpip.h>
 #include <ws2tcpip.h>
+#include <iphlpapi.h>
 #endif
 
 #ifdef __linux__
@@ -43,7 +44,7 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* addr, ProcessingPacketHa
   s->SniffStart = 0;
   s->SniffEnd = 0;
 
-  ParseAddressString(addr, &s->InterfaceName, &s->IP, &s->Port, &s->ErrorMessage);
+  ParseAddressString(addr, &s->Interface, &s->IP, &s->Port, &s->ErrorMessage);
 
   s->Protocol = p;
   s->RecvCount = 0;
@@ -116,9 +117,17 @@ int SnifferStart(Sniffer_t* s)
 
 #ifdef __linux__
   memset(&(s->__ifr), 0, sizeof(s->__ifr));
-  strncpy(s->__ifr.ifr_name, s->InterfaceName, IFNAMSIZ);
-  if ((s->__ifr.ifr_ifindex = (int) if_nametoindex(s->InterfaceName)) == 0) {
-    FormatStringBuffer(&s->ErrorMessage, "Cannot get interface index: %s", GetLastErrorMessage());
+  strncpy(s->__ifr.ifr_name, s->Interface, IFNAMSIZ);
+  if ((s->__ifr.ifr_ifindex = (int) if_nametoindex(s->Interface)) == 0) {
+    FormatStringBuffer(&s->ErrorMessage, "Cannot get interface (%s) index: %s", s->Interface, GetLastErrorMessage());
+    return -1;
+  }
+
+  if (ioctl(s->__sock, SIOCGIFADDR, &s->__ifr) < 0) {
+    FormatStringBuffer(&s->ErrorMessage,
+                       "Cannot get IP address of the interface (%s): %s",
+                       s->Interface,
+                       GetLastErrorMessage());
     return -1;
   }
 #endif
@@ -135,15 +144,62 @@ int SnifferStart(Sniffer_t* s)
     s->__sockAddr = ll;
     szSockAddress = sizeof(struct sockaddr_ll);
   } else {
+#elif _WIN32
+  PIP_ADAPTER_INFO adaptlist = malloc(sizeof(IP_ADAPTER_INFO)), adaptlistNext = NULL;
+  assert(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+  ULONG adaptlistBytes = sizeof(IP_ADAPTER_INFO);
+  ULONG getAdaptListRetCode = NO_ERROR;
+  do {
+    getAdaptListRetCode = GetAdaptersInfo(adaptlist, &adaptlistBytes);
+
+    switch (getAdaptListRetCode) {
+    case ERROR_BUFFER_OVERFLOW: {
+      FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): Error allocating memore needed to call.");
+      adaptlist = realloc(adaptlist, adaptlistBytes);
+      assert(("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+      break;
+    }
+    case NO_ERROR:
+      break;
+    default: {
+      FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): %s.", GetLastErrorMessage());
+      free(adaptlist);
+      return -1;
+    }
+    }
+  } while (getAdaptListRetCode != NO_ERROR);
+
+  char ifaceIpAddress[IP_MAX_SIZE];
+  DWORD ifaceIndex = (DWORD) atoi(s->Interface);
+  BOOL ifaceIpAddressFound = FALSE;
+  for (adaptlistNext = adaptlist; adaptlistNext != NULL; adaptlistNext = adaptlist->Next) {
+    if (ifaceIndex == adaptlistNext->Index) {
+      ifaceIpAddressFound = TRUE;
+      strncpy(ifaceIpAddress, adaptlistNext->IpAddressList.IpAddress.String, IP_MAX_SIZE);
+      break;
+    }
+  }
+  free(adaptlist);
+
+  if (!ifaceIpAddressFound) {
+    FormatStringBuffer(&s->ErrorMessage, "IP address for the interface index %s not found.", s->Interface);
+    return -1;
+  }
 #endif
+    // clang-format off
     struct sockaddr_in* in = malloc(sizeof(struct sockaddr_in));
     memset(in, 0, sizeof(struct sockaddr_in));
     in->sin_family = AF_INET;
-    in->sin_addr.s_addr = inet_addr(s->IP);
+#ifdef __linux__
+    in->sin_addr = ((struct sockaddr_in*) &s->__ifr.ifr_addr)->sin_addr;
+#elif _WIN32
+    in->sin_addr.s_addr = inet_addr(ifaceIpAddress); 
+#endif
     in->sin_port = htons((u_short) s->Port);
 
     s->__sockAddr = in;
     szSockAddress = sizeof(struct sockaddr_in);
+    // clang-format on
 #ifdef __linux__
   }
 #endif
@@ -325,6 +381,6 @@ void SnifferClear(Sniffer_t* s)
   free(s->__buf);
 
   free(s->IP);
-  free(s->InterfaceName);
+  free(s->Interface);
   free(s->ErrorMessage);
 }

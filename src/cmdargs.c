@@ -52,7 +52,7 @@ void PrintHelp()
 #ifdef __linux__
                         "INTERFACE:IP:PORT"
 #elif _WIN32
-                        "IP:PORT"
+                        "INTERFACE-INDEX:IP:PORT"
 #endif
                         " \n"
                         "Sniffs network traffic at the specified address. \n"
@@ -61,7 +61,7 @@ void PrintHelp()
                         "\n"
                         "Example: \n"
 #ifdef __linux__
-                        "\t" EXE_BINARY_NAME " eth0:127.0.0.1:8000 \n"
+                        "\t" EXE_BINARY_NAME " lo:127.0.0.1:8000 \n"
 #elif _WIN32
                         "\t" EXE_BINARY_NAME ".exe 127.0.0.1:8000 \n"
 #endif

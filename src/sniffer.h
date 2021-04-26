@@ -21,7 +21,7 @@ typedef struct
   uint64_t SniffEnd;   //! Sniffer end timestamp (not used, always non-initialized)
   char* IP;            //! IP address
   int Port;            //! Port
-  char* InterfaceName; //! Interface name (On Sindows this field if empty)
+  char* Interface;     //! Interface name (On Windows this field is interface index )
   Protocol_t Protocol; //! Protocol number value
   uint32_t RecvCount;  //! Number of received packets
   uint32_t SentCount;  //! NUmber of sent packets
