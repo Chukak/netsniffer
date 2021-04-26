@@ -59,6 +59,7 @@ int main(int argc, char** argv)
     return 0;
   case CmdArgs_ERROR:
     printf("%s\n", errorMsg);
+    free(errorMsg);
     return 1;
   default:
     break;

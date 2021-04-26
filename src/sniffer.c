@@ -9,6 +9,7 @@
 
 #ifdef __linux__
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <net/if_packet.h>
 #include <net/ethernet.h>
 #include <netpacket/packet.h>
@@ -63,10 +64,7 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketH
 #endif
 
 #ifdef __linux__
-  if (s->Protocol == Protocol_ANY) // TODO: duplicates
-    s->__sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-  else
-    s->__sock = socket(AF_INET, SOCK_RAW, s->Protocol);
+  s->__sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
   if (s->__sock == -1) {
 #elif _WIN32
   s->__sock = socket(AF_INET, SOCK_RAW, htons(IPPROTO_IP));
@@ -104,7 +102,9 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketH
   }
 #endif
 
-  s->__sockAddr = NULL;
+  s->__ifindex = 0;
+  s->__bindIP[0] = '\0';
+
   s->__buf = malloc(ETH_MAX_PACKET_SIZE);
   assert(("Cannot initialize a new network buffer: malloc returned size '0'.", s->__buf != NULL));
 
@@ -145,45 +145,44 @@ int SnifferStart(Sniffer_t* s)
   if (s == NULL)
     return -1;
 
+  void* sockAddress = NULL;
+  socklen_t szSockAddress = 0;
 #ifdef __linux__
-  memset(&(s->__ifr), 0, sizeof(s->__ifr));
-  strncpy(s->__ifr.ifr_name, s->Interface, IFNAMSIZ);
-  if ((s->__ifr.ifr_ifindex = (int) if_nametoindex(s->Interface)) == 0) {
+  struct ifreq sockSettings = {0};
+
+  if ((s->__ifindex = (int) if_nametoindex(s->Interface)) == 0) {
     FormatStringBuffer(&s->ErrorMessage, "Cannot get interface (%s) index: %s", s->Interface, GetLastErrorMessage());
     return -1;
   }
 
-  if (ioctl(s->__sock, SIOCGIFADDR, &s->__ifr) < 0) {
+  strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
+  sockSettings.ifr_ifindex = s->__ifindex;
+  if (ioctl(s->__sock, SIOCGIFADDR, &sockSettings) < 0) {
     FormatStringBuffer(&s->ErrorMessage,
                        "Cannot get IP address of the interface (%s): %s",
                        s->Interface,
                        GetLastErrorMessage());
     return -1;
   }
-#endif
+  strncpy(s->__bindIP, inet_ntoa(((struct sockaddr_in*) &sockSettings.ifr_addr)->sin_addr), IP_MAX_SIZE);
 
-  socklen_t szSockAddress = 0;
-#ifdef __linux__
-  if (s->Protocol == Protocol_ANY) {
-    struct sockaddr_ll* ll = malloc(sizeof(struct sockaddr_ll));
-    memset(ll, 0, sizeof(struct sockaddr_ll));
-    ll->sll_family = AF_PACKET;
-    ll->sll_protocol = htons(ETH_P_ALL);
-    ll->sll_ifindex = s->__ifr.ifr_ifindex;
+  struct sockaddr_ll* ll = malloc(sizeof(struct sockaddr_ll));
+  memset(ll, 0, sizeof(struct sockaddr_ll));
+  ll->sll_family = AF_PACKET;
+  ll->sll_protocol = htons(ETH_P_ALL);
+  ll->sll_ifindex = s->__ifindex;
 
-    s->__sockAddr = ll;
-    szSockAddress = sizeof(struct sockaddr_ll);
-  } else {
+  sockAddress = ll;
+  szSockAddress = sizeof(struct sockaddr_ll);
 #elif _WIN32
-  char ifaceIpAddress[IP_MAX_SIZE];
-  long ifaceIndex = strtol(s->Interface, NULL, 10);
-  if (ifaceIndex < 0) {
+  s->__ifindex = strtol(s->Interface, NULL, 10);
+  if (s->__ifindex < 0) {
     FormatStringBuffer(&s->ErrorMessage, "Invalid interface index: %s.", s->Interface);
     return -1;
   }
 
-  if (ifaceIndex == 0) {
-    strncpy(ifaceIpAddress, LOOPBACK_ADDRESS, IP_MAX_SIZE);
+  if (s->__ifindex == 0) {
+    strncpy(s->__bindIP, LOOPBACK_ADDRESS, IP_MAX_SIZE);
   } else {
     PIP_ADAPTER_INFO adaptlist = malloc(sizeof(IP_ADAPTER_INFO)), adaptlistNext = NULL;
     assert(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
@@ -211,9 +210,9 @@ int SnifferStart(Sniffer_t* s)
 
     bool ifaceIpAddressFound = false;
     for (adaptlistNext = adaptlist; adaptlistNext != NULL; adaptlistNext = adaptlist->Next) {
-      if ((DWORD) ifaceIndex == adaptlistNext->Index) {
+      if ((DWORD) s->__ifindex == adaptlistNext->Index) {
         ifaceIpAddressFound = true;
-        strncpy(ifaceIpAddress, adaptlistNext->IpAddressList.IpAddress.String, IP_MAX_SIZE);
+        strncpy(s->__bindIP, adaptlistNext->IpAddressList.IpAddress.String, IP_MAX_SIZE);
         break;
       }
     }
@@ -224,40 +223,39 @@ int SnifferStart(Sniffer_t* s)
       return -1;
     }
   }
-#endif
-    // clang-format off
-    struct sockaddr_in* in = malloc(sizeof(struct sockaddr_in));
-    memset(in, 0, sizeof(struct sockaddr_in));
-    in->sin_family = AF_INET;
-#ifdef __linux__
-    in->sin_addr = ((struct sockaddr_in*) &s->__ifr.ifr_addr)->sin_addr;
-#elif _WIN32
-    in->sin_addr.s_addr = inet_addr(ifaceIpAddress); 
-#endif
-    in->sin_port = 0;
 
-    s->__sockAddr = in;
-    szSockAddress = sizeof(struct sockaddr_in);
-    // clang-format on
-#ifdef __linux__
-  }
+  struct sockaddr_in* in = malloc(sizeof(struct sockaddr_in));
+  memset(in, 0, sizeof(struct sockaddr_in));
+  in->sin_family = AF_INET;
+  in->sin_addr.s_addr = inet_addr(s->__bindIP);
+  in->sin_port = 0;
+
+  sockAddress = in;
+  szSockAddress = sizeof(struct sockaddr_in);
 #endif
 
-  if (bind(s->__sock, (struct sockaddr*) s->__sockAddr, szSockAddress) == SOCKET_ERROR_CODE) {
+  if (bind(s->__sock, (struct sockaddr*) sockAddress, szSockAddress) == SOCKET_ERROR_CODE) {
     FormatStringBuffer(&s->ErrorMessage, "Cannot bind socket: %s", GetLastErrorMessage());
+    free(sockAddress);
     return -1;
   }
+  free(sockAddress);
 
 #ifdef __linux__
-  if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &s->__ifr) < 0) {
+  memset(&sockSettings, 0, sizeof(sockSettings));
+  strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
+  sockSettings.ifr_ifindex = s->__ifindex;
+  if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &sockSettings) < 0) {
     FormatStringBuffer(&s->ErrorMessage, "Cannot get socket mode: %s", GetLastErrorMessage());
     return -1;
   }
 
-  s->__ifr.ifr_flags |= IFF_PROMISC;
-  if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &s->__ifr) < 0) {
-    FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
-    return -1;
+  if (!(sockSettings.ifr_flags & IFF_PROMISC)) {
+    sockSettings.ifr_flags |= IFF_PROMISC;
+    if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &sockSettings) < 0) {
+      FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+      return -1;
+    }
   }
 #elif _WIN32
   if (WSAIoctl(s->__sock,
@@ -292,7 +290,7 @@ int SnifferProcessNextPacket(Sniffer_t* s)
 
   fd_set input;
   FD_SET(s->__sock, &input);
-  struct timeval timeout = {0, SOCKET_WAITING_TIMEOUT_MS * 1000};
+  struct timeval timeout = {0, SOCKET_WAITING_TIMEOUT_MS};
   switch (select((int) s->__sock + 1, &input, NULL, NULL, &timeout)) {
   case -1: {
     FormatStringBuffer(&s->ErrorMessage, "select (..): %s", GetLastErrorMessage());
@@ -305,14 +303,23 @@ int SnifferProcessNextPacket(Sniffer_t* s)
       return 0;
   }
   }
+#ifdef __linux__
+  struct sockaddr_ll from;
+#elif _WIN32
+  struct sockaddr_in from;
+  (void) from;
+#endif
+  socklen_t fromBytes = sizeof(from);
 
   int64_t recvBytes;
-  if ((recvBytes = recvfrom(s->__sock, (char*) s->__buf, ETH_MAX_PACKET_SIZE, 0, NULL, 0)) > 0) {
+  if ((recvBytes =
+           recvfrom(s->__sock, (char*) s->__buf, ETH_MAX_PACKET_SIZE, 0, (struct sockaddr*) &from, &fromBytes)) > 0) {
     do {
-      Buffer_t buffer = s->__buf;
+      Buffer_t buffer;
 #ifdef __linux__
-      if (s->Protocol == Protocol_ANY)
-        buffer = s->__buf + GetETHHeaderLength();
+      buffer = s->__buf + GetETHHeaderLength(); // ETH_P_ALL
+#elif _WIN32
+      buffer = s->__buf;
 #endif
       IPHeader_t* iphdr = GetIPHeader(buffer);
 
@@ -331,6 +338,28 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           strncpy(sourceIP, inet_ntoa(src.sin_addr), IP_MAX_SIZE);
           strncpy(destIP, inet_ntoa(dst.sin_addr), IP_MAX_SIZE);
         }
+
+#ifdef __linux__
+        // duplicate packets
+        if (strcmp(sourceIP, destIP) == 0 && from.sll_pkttype == PACKET_OUTGOING)
+          /*
+           * It is the same packet.
+           */
+          break;
+
+        if (from.sll_pkttype == PACKET_OUTGOING && strcmp(s->__bindIP, sourceIP) != 0)
+          /*
+           * If this packet has type == PACKET_OUTGOING, the bind IP should be equals to source IP! Otherwise, may be it
+           * is duplicate (from localhost to localhost, 127.0.0.2 -> 127.0.0.1).
+           */
+          break;
+
+        if (from.sll_pkttype == PACKET_HOST && strcmp(s->__bindIP, destIP) != 0)
+          /*
+           * If this packet has type == PACKET_HOST, the bind IP shoul be equals to destination IP!
+           */
+          break;
+#endif
 
         bool ipFound = false;
         for (int i = 0; i < s->AddressesCount; ++i) {
@@ -407,10 +436,20 @@ int SnifferStop(Sniffer_t* s)
   }
 
 #ifdef __linux__
-  s->__ifr.ifr_flags &= ~IFF_PROMISC;
-  if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &s->__ifr) < 0) {
-    FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+  struct ifreq sockSettings = {0};
+  strncpy(sockSettings.ifr_name, s->Interface, IFNAMSIZ);
+  sockSettings.ifr_ifindex = s->__ifindex;
+  if (ioctl(s->__sock, SIOCGIFFLAGS, (char*) &sockSettings) < 0) {
+    FormatStringBuffer(&s->ErrorMessage, "Cannot get socket mode: %s", GetLastErrorMessage());
     return -1;
+  }
+
+  if (sockSettings.ifr_flags & IFF_PROMISC) {
+    sockSettings.ifr_flags &= ~IFF_PROMISC;
+    if (ioctl(s->__sock, SIOCSIFFLAGS, (char*) &sockSettings) < 0) {
+      FormatStringBuffer(&s->ErrorMessage, "Cannot set socket mode: %s", GetLastErrorMessage());
+      return -1;
+    }
   }
 #endif
 
@@ -433,7 +472,6 @@ void SnifferClear(Sniffer_t* s)
   if (s == NULL)
     return;
 
-  free(s->__sockAddr);
   free(s->__buf);
 
   free(s->ErrorMessage);

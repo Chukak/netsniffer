@@ -65,6 +65,7 @@ int ParseAddressString(const char* address, char** ip, int* port, char** error)
   size_t addrSize = strlen(address);
   char* source = malloc(sizeof(char) * addrSize + 1);
   strncpy(source, address, addrSize);
+  source[addrSize] = '\0';
 
   char* delimeter = strstr(source, ":");
   if (delimeter == NULL) {
@@ -88,7 +89,7 @@ int ParseAddressString(const char* address, char** ip, int* port, char** error)
   strncpy(*ip, source, (size_t) ipSize);
   (*ip)[ipSize] = '\0';
 
-  *port = (int) strtol(source + ipSize, NULL, 10);
+  *port = (int) strtol(source + ipSize + 1, NULL, 10);
   if (*port < 0) {
     FormatStringBuffer(error, "Invalid port '%d'.", port);
     free(source);

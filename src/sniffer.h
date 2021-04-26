@@ -3,10 +3,6 @@
 
 #include "structures.h"
 
-#ifdef __linux__
-#include <net/if.h>
-#endif
-
 #define SOCKET_WAITING_TIMEOUT_MS 1000
 
 typedef void* HandlerArgs_t;
@@ -28,12 +24,12 @@ typedef struct
   char* ErrorMessage;                       //! Error messages
 #ifdef __linux__
   int __sock;
-  struct ifreq __ifr;
 #elif _WIN32
   SOCKET __sock;
   WSADATA __wsadata;
 #endif
-  void* __sockAddr;
+  int __ifindex;
+  char __bindIP[IP_MAX_SIZE];
   Buffer_t __buf;
   ProcessingPacketHandler_t __handler;
   HandlerArgs_t __args;
