@@ -1,6 +1,7 @@
 #include "sniffer.h"
 #include "cmdargs.h"
 #include "printing.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <assert.h>
@@ -14,11 +15,15 @@
 
 typedef void* ThreadArgs_t;
 typedef void* ThreadReturnValue_t;
+#define SUCCESS_THREAD (void*) 0
+#define FAIL_THREAD (void*) -1
 #elif _WIN32
 #include <windows.h>
 
 typedef LPVOID ThreadArgs_t;
 typedef DWORD ThreadReturnValue_t;
+#define SUCCESS_THREAD TRUE
+#define FAIL_THREAD FALSE
 #endif
 
 static void PrintPacket(void* owner, Buffer_t buffer, size_t size, HandlerArgs_t args);
@@ -26,6 +31,18 @@ static ThreadReturnValue_t StartSniffingPackets(ThreadArgs_t args);
 
 static atomic_int IsRunning = 0;
 static void SignalHandler(int sig);
+
+static
+#ifdef __linux__
+    pthread_mutex_t
+#elif _WIN32
+    HANDLE
+#endif
+        MainMutex;
+static void InitMainMutex();
+static int LockMainMutex();
+static int UnlockMainMutex();
+static void DestroyMainMutex();
 
 int main(int argc, char** argv)
 {
@@ -74,9 +91,9 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  InitMainMutex();
 #ifdef __linux__
   pthread_t snifferThread;
-
   pthread_create(&snifferThread, NULL, StartSniffingPackets, &sniffer);
 #elif _WIN32
   HANDLE snifferThread = CreateThread(
@@ -92,16 +109,21 @@ int main(int argc, char** argv)
 #endif
   }
 
-  // TODO: mutex
-  if (SnifferStop(&sniffer) < 0) {
+  if (LockMainMutex() != 0)
+    printf("%s\n", GetLastErrorMessage());
+
+  if (SnifferStop(&sniffer) < 0)
     printf("%s\n", sniffer.ErrorMessage);
-  }
+
+  if (UnlockMainMutex() != 0)
+    printf("%s\n", GetLastErrorMessage());
 
 #ifdef __linux__
   pthread_join(snifferThread, NULL);
 #elif _WIN32
   WaitForSingleObject(snifferThread, INFINITE);
 #endif
+  DestroyMainMutex();
 
   SnifferClear(&sniffer);
   PacketBuffersDelete(&buffers);
@@ -144,35 +166,76 @@ void PrintPacket(void* owner, Buffer_t buffer, size_t size, HandlerArgs_t args)
 ThreadReturnValue_t StartSniffingPackets(ThreadArgs_t args)
 {
   if (args == NULL)
-#ifdef __linux__
-    return (void*) -1;
-#elif _WIN32
-    return FALSE;
-#endif
+    return FAIL_THREAD;
 
   Sniffer_t* sniffer = (Sniffer_t*) args;
   assert(("Cannot convert 'ThreadArgs_t' to 'Sniffer_t*'.", sniffer != NULL));
 
   while (IsRunning) {
-    if (SnifferProcessNextPacket(sniffer) < 0) {
+    if (LockMainMutex() != 0)
+      printf("%s\n", GetLastErrorMessage());
+
+    int rc = SnifferProcessNextPacket(sniffer);
+
+    if (UnlockMainMutex() != 0)
+      printf("%s\n", GetLastErrorMessage());
+
+    if (rc < 0) {
       printf("%s\n", sniffer->ErrorMessage);
-#ifdef __linux__
-      return (void*) -1;
-#elif _WIN32
-      return FALSE;
-#endif
+      return FAIL_THREAD;
     }
   }
 
-#ifdef __linux__
-  return (void*) 0;
-#elif _WIN32
-  return TRUE;
-#endif
+  return SUCCESS_THREAD;
 }
 
 void SignalHandler(int sig)
 {
   (void) sig;
   IsRunning = 0;
+}
+
+void InitMainMutex()
+{
+#ifdef __linux__
+  pthread_mutex_init(&MainMutex, NULL);
+#elif _WIN32
+  MainMutex = CreateMutexA(NULL, FALSE, NULL);
+#endif
+}
+
+int LockMainMutex()
+{
+#ifdef __linux__
+  return pthread_mutex_lock(&MainMutex);
+#elif _WIN32
+  switch (WaitForSingleObject(MainMutex, 1000 /* 1 sec */)) {
+  case WAIT_ABANDONED:
+  case WAIT_TIMEOUT:
+  case WAIT_FAILED: {
+    return -1;
+  }
+  }
+  return 0;
+#endif
+}
+
+int UnlockMainMutex()
+{
+#ifdef __linux__
+  return pthread_mutex_unlock(&MainMutex);
+#elif _WIN32
+  if (!ReleaseMutex(MainMutex))
+    return -1;
+  return 0;
+#endif
+}
+
+void DestroyMainMutex()
+{
+#ifdef __linux__
+  pthread_mutex_destroy(&MainMutex);
+#elif _WIN32
+  CloseHandle(MainMutex);
+#endif
 }
