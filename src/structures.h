@@ -168,11 +168,6 @@ UDPHeader_t* GetUDPHeader(Buffer_t buf);
  * @returns The pointer to the packet data.
  */
 Buffer_t GetPacketData(Buffer_t buf, size_t* offset);
-/**
- * @brief GetProtocolFromString
- * @return A Protocol_t value.
- */
-Protocol_t GetProtocolFromString(const char* s);
 
 /**
  * @brief Direction_t

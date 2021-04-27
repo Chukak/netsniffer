@@ -11,10 +11,6 @@
 #include <Windows.h>
 #endif
 
-static const char* ProtocolStringICMP = "ICMP";
-static const char* ProtocolStringTCPV4 = "TCP";
-static const char* ProtocolStringUDP = "UDP";
-
 #define TIME_INFO_BUFFER_MAX_SIZE 14
 static const char* TIME_INFO_FORMAT = "%02d:%02d:%02d.%d";
 
@@ -75,18 +71,6 @@ Buffer_t GetPacketData(Buffer_t buf, size_t* offset)
   }
 
   return buf + *offset;
-}
-
-Protocol_t GetProtocolFromString(const char* s)
-{
-  if (strcmp(s, ProtocolStringICMP) == 0)
-    return Protocol_ICMP;
-  if (strcmp(s, ProtocolStringTCPV4) == 0)
-    return Protocol_TCP;
-  if (strcmp(s, ProtocolStringUDP) == 0)
-    return Protocol_UDP;
-
-  return Protocol_ANY;
 }
 
 void FilterInitDefaults(Filter_t* f)
@@ -174,7 +158,7 @@ int GetTimeInfoNow(TimeInfo_t* ti, char** error)
 void TimeInfoToString(TimeInfo_t* ti, char** buffer)
 {
   *buffer = malloc(sizeof(char) * TIME_INFO_BUFFER_MAX_SIZE);
-  assert(("Cannot initialize a new string: realloc returned 'NULL'.", *buffer != NULL));
+  ASSERT("Cannot initialize a new string: realloc returned 'NULL'.", *buffer != NULL);
 
   snprintf(*buffer, TIME_INFO_BUFFER_MAX_SIZE, TIME_INFO_FORMAT, ti->Hours, ti->Minutes, ti->Seconds, ti->Milliseconds);
 }
