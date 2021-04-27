@@ -2,8 +2,8 @@
 
 # Netsniffer
 
-Sniffering network traffic on the interface. Filtering network packets. 
-Displays Ethernet, IP and Protocol headers and any packet data. 
+Sniffing network traffic on the interface. Filtering network packets. 
+Displays IP and Protocol headers and any packet data. 
 
 
 ## Installation and Running
