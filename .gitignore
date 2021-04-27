@@ -46,3 +46,6 @@ out
 CMakeSettings.json
 build
 .vscode
+
+# Linux
+debian
