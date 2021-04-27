@@ -89,6 +89,15 @@ Protocol_t GetProtocolFromString(const char* s)
   return Protocol_ANY;
 }
 
+void FilterInitDefaults(Filter_t* f)
+{
+  if (f == NULL)
+    return;
+
+  f->Direction = Direction_ANY;
+  f->Protocol = Protocol_ANY;
+}
+
 int GetTimeInfoNow(TimeInfo_t* ti, char** error)
 {
   if (ti == NULL)

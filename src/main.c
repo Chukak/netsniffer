@@ -69,19 +69,18 @@ int main(int argc, char** argv)
   signal(SIGTERM, SignalHandler);
 
   PacketBuffers_t buffers;
-  PacketBuffersInit(&buffers);
 #ifdef __linux
   SetPromiscMode(args.PromiscMode);
 #endif
   Sniffer_t sniffer;
-  if (SnifferInit(&sniffer, args.Protocol, args.Interface, PrintPacket, &buffers) < 0) {
+  if (SnifferInit(&sniffer, args.Interface, PrintPacket, &buffers) < 0) {
     printf("%s\n", sniffer.ErrorMessage);
     SnifferClear(&sniffer);
     return 1;
   }
 
   for (int i = 0; i < args.AddressesCount; ++i) {
-    if (SnifferAddAddress(&sniffer, args.Addresses[i]) < 0) {
+    if (SnifferAddAddress(&sniffer, args.Addresses[i], &args.Filters[i]) < 0) {
       printf("%s\n", sniffer.ErrorMessage);
       SnifferClear(&sniffer);
       return 1;
@@ -92,9 +91,12 @@ int main(int argc, char** argv)
   SnifferIncludeETHHeader(&sniffer, args.IncludeETHHeader);
 #endif
 
+  PacketBuffersInit(&buffers);
+
   if (SnifferStart(&sniffer) < 0) {
     printf("%s\n", sniffer.ErrorMessage);
     SnifferClear(&sniffer);
+    PacketBuffersDelete(&buffers);
     return 1;
   }
 

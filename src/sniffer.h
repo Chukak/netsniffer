@@ -14,13 +14,16 @@ typedef void (*ProcessingPacketHandler_t)(void*, Buffer_t, size_t, TimeInfo_t, H
  */
 typedef struct
 {
-  Address_t Addresses[ADDRESSES_MAX_COUNT]; //! Addresses in the format 'IP:PORT'
-  uint16_t AddressesCount;                  //! Addresses count
-  char Interface[IFACE_MAX_SIZE];           //! Interface name (On Windows this field is interface index )
-  Protocol_t Protocol;                      //! Protocol number value
-  char* ErrorMessage;                       //! Error messages
-#ifdef __linux__
-  bool ETHHeaderIncluded;
+  struct FilterAddress_t
+  {
+    Address_t Address;
+    Filter_t Filter;
+  } Addresses[ADDRESSES_MAX_COUNT]; //! Addresses in the format 'IP:PORT'
+  uint16_t AddressesCount;          //! Addresses count
+  char Interface[IFACE_MAX_SIZE];   //! Interface name (On Windows this field is interface index )
+  char* ErrorMessage;               //! Error messages
+#ifdef __linux__                    //
+  bool ETHHeaderIncluded;           //! ETH header included
 #endif
   // private fields
 #ifdef __linux__
@@ -45,21 +48,22 @@ typedef struct
  * @brief SnifferInit
  * Initializates values for the new sniffer object.
  * @param s The pointer to the sniffer object
- * @param p Protocol number value
  * @param iface Interface (on Windows this parameter is interface index as string)
  * @param handler Handler to processing network packets
  * @param args Handler arguments.
  * @returns -1 if an error occurred, otherwise 0.
  */
-int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args);
+int SnifferInit(Sniffer_t* s, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args);
 /**
  * @brief SnifferAddAddress
- * Adds the new address for sniffing network packets. The address must be in the format "IP\:PORT".
+ * Adds the new address for sniffing network packets. The address must be in the format "IP\:PORT". If the passed filter
+ * is NULL, the default filter will be used.
  * @param s The pointer to the sniffer object
  * @param addr The new address in the format "IP\:PORT"
+ * @param filter The filtering options on this address
  * @returns -1 if an error occurred, otherwise 0.
  */
-int SnifferAddAddress(Sniffer_t*, const char* addr);
+int SnifferAddAddress(Sniffer_t*, const char* addr, const Filter_t* filter);
 /**
  * @brief SnifferStart
  * Starts sniffing network packets. This function will be block the current thread on SOCKET_WAITING_TIMEOUT_MS.

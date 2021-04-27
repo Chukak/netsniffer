@@ -24,8 +24,8 @@ typedef struct
   bool PromiscMode;
   bool IncludeETHHeader;
 #endif
-  Protocol_t Protocol;
   char Interface[IFACE_MAX_SIZE];
+  Filter_t Filters[ADDRESSES_MAX_COUNT];
   char Addresses[ADDRESSES_MAX_COUNT][ADDRESS_MAX_SIZE];
   int AddressesCount;
 } CmdArgs_t;

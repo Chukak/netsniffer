@@ -41,14 +41,19 @@ static unsigned long WSAIoctlSupperss;
 
 #define LOOPBACK_ADDRESS "127.0.0.1"
 
-int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args)
+int SnifferInit(Sniffer_t* s, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args)
 {
   assert(("Cannot init sniffer ('Sniffer_t'): s == NULL.", s != NULL));
+
+  for (int i = 0; i < ADDRESSES_MAX_COUNT; ++i) {
+    s->Addresses[i].Address.IP[0] = '\0';
+    s->Addresses[i].Address.Port = 0;
+    FilterInitDefaults(&s->Addresses[i].Filter);
+  }
 
   s->AddressesCount = 0;
   strncpy(s->Interface, iface, IFACE_MAX_SIZE);
 
-  s->Protocol = p;
   s->ErrorMessage = NULL;
 
 #ifdef _WIN32
@@ -111,7 +116,7 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketH
   return 0;
 }
 
-int SnifferAddAddress(Sniffer_t* s, const char* addr)
+int SnifferAddAddress(Sniffer_t* s, const char* addr, const Filter_t* filter)
 {
   if (s == NULL)
     return -1;
@@ -130,8 +135,10 @@ int SnifferAddAddress(Sniffer_t* s, const char* addr)
     return -1;
 
   int currentIndex = s->AddressesCount++;
-  strncpy(s->Addresses[currentIndex].IP, ip, IP_MAX_SIZE);
-  s->Addresses[currentIndex].Port = (uint16_t) port;
+  strncpy(s->Addresses[currentIndex].Address.IP, ip, IP_MAX_SIZE);
+  s->Addresses[currentIndex].Address.Port = (uint16_t) port;
+  if (filter != NULL)
+    memcpy(&s->Addresses[currentIndex].Filter, filter, sizeof(Filter_t));
 
   free(ip);
   return 0;
@@ -325,9 +332,6 @@ int SnifferProcessNextPacket(Sniffer_t* s)
       IPHeader_t* iphdr = GetIPHeader(buffer);
 
       if (iphdr) {
-        if (s->Protocol != Protocol_ANY && iphdr->Protocol != s->Protocol)
-          break;
-
         char sourceIP[IP_MAX_SIZE] = "\0", destIP[IP_MAX_SIZE] = "\0";
         {
           static struct sockaddr_in src, dst;
@@ -362,19 +366,6 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           break;
 #endif
 
-        bool ipFound = false;
-        for (int i = 0; i < s->AddressesCount; ++i) {
-          // TODO: Direction
-          if (strcmp(s->Addresses[i].IP, "any") == 0 || strcmp(s->Addresses[i].IP, sourceIP) == 0 ||
-              strcmp(s->Addresses[i].IP, destIP) == 0) {
-            ipFound = true;
-            break;
-          }
-        }
-
-        if (!ipFound)
-          break;
-
         int sourcePort = 0, destPort = 0;
         {
           switch (iphdr->Protocol) {
@@ -395,15 +386,41 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           }
         }
 
-        bool portFound = false;
+        bool addrFound = false;
         for (int i = 0; i < s->AddressesCount; ++i) {
-          if (s->Addresses->Port == 0 || s->Addresses->Port == sourcePort || s->Addresses->Port == destPort) {
-            portFound = true;
-            break;
+          if (s->Addresses[i].Filter.Protocol != iphdr->Protocol && s->Addresses[i].Filter.Protocol != Protocol_ANY)
+            continue;
+
+          if (s->Addresses[i].Filter.Direction == Direction_ANY ||
+              s->Addresses[i].Filter.Direction == Direction_SOURCE) {
+            if (( // if specified any address, ip was found. We received any packet with any direction
+                    (strcmp(s->Addresses[i].Address.IP, "any") == 0) //
+                    || // compare source ip with the specified ip, find direction
+                    (strcmp(s->Addresses[i].Address.IP, sourceIP) == 0))
+                // compare the source port and the specified port
+                && (s->Addresses[i].Address.Port == 0 || s->Addresses[i].Address.Port == sourcePort)) //
+            {
+              addrFound = true;
+              break;
+            }
+          }
+
+          if (s->Addresses[i].Filter.Direction == Direction_ANY ||
+              s->Addresses[i].Filter.Direction == Direction_DESTINATION) {
+            if (( // if specified any address, ip was found. We received any packet with any direction
+                    (strcmp(s->Addresses[i].Address.IP, "any") == 0) //
+                    || // compare dest ip with the specified ip, find direction
+                    (strcmp(s->Addresses[i].Address.IP, destIP) == 0))
+                // compare the destination port and the specified port
+                && (s->Addresses[i].Address.Port == 0 || s->Addresses[i].Address.Port == destPort)) //
+            {
+              addrFound = true;
+              break;
+            }
           }
         }
 
-        if (!portFound)
+        if (!addrFound)
           break;
 
         if (s->__handler) {

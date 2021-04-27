@@ -175,6 +175,17 @@ Buffer_t GetPacketData(Buffer_t buf, size_t* offset);
 Protocol_t GetProtocolFromString(const char* s);
 
 /**
+ * @brief Direction_t
+ * Implements a network packet direction.
+ */
+typedef enum
+{
+  Direction_ANY = 0,
+  Direction_SOURCE = 1,
+  Direction_DESTINATION = 2
+} Direction_t;
+
+/**
  * @brief Address_t
  * Network address.
  */
@@ -185,6 +196,22 @@ typedef struct
 } Address_t;
 
 #define ADDRESSES_MAX_COUNT 20
+
+/**
+ * @brief Filter_t
+ * Network filter.
+ */
+typedef struct
+{
+  Direction_t Direction;
+  Protocol_t Protocol;
+} Filter_t;
+/**
+ * @brief FilterInitDefaults
+ * Initializes a Filter_t structure with default values.
+ * @param f The pointer to the Filter_t structure.
+ */
+void FilterInitDefaults(Filter_t* f);
 
 /**
  * @brief Timestamp_t
@@ -199,7 +226,6 @@ typedef struct
   time_t TimestampSec;
   uint32_t TimestampNanosec;
 } TimeInfo_t;
-
 /**
  * @brief GetTimeInfoNow
  * Gets the current time and stores it in the first argument (TimeInfo_t structure).
