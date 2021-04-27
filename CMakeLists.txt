@@ -37,7 +37,7 @@ if (${CMAKE_BUILD_TYPE} MATCHES Debug)
         list(APPEND C_PROJECT_COMPILE_FLAGS -fno-omit-frame-pointer -fsanitize=address)
         list(APPEND C_PROJECT_LINK_FLAGS -lasan)
     endif()
-    list(APPEND C_PROJECT_COMPILE_DEFINITIONS -DNDEBUG)
+    list(APPEND C_PROJECT_COMPILE_DEFINITIONS) #  -DNDEBUG
 endif()
 
 if (UNIX)
@@ -65,8 +65,11 @@ if (TESTS_ENABLED)
 
     set(TEST_SOURCE_FILES
         tests/main.c
+        tests/test-utils.c
+        tests/test-structures.c
     )
     set(TEST_HEADER_FILES
+        tests/testing.h
     )
     
     list(REMOVE_ITEM SOURCE_FILES src/main.c)
