@@ -4,7 +4,6 @@
 #include "utils.h"
 
 #include <stdio.h>
-#include <assert.h>
 #include <signal.h>
 #include <stdatomic.h>
 
@@ -146,17 +145,17 @@ PROCESSING_HANDLER_FUNC(PrintPacket, owner, buffer, size, time, args)
     return;
 
   Sniffer_t* sniffer = (Sniffer_t*) owner;
-  assert(("Cannot convert 'void*' to 'Sniffer_t*'.", sniffer != NULL));
+  ASSERT("Cannot convert 'void*' to 'Sniffer_t*'.", sniffer != NULL);
   (void) sniffer;
 
   PacketBuffers_t* buffers = (PacketBuffers_t*) args;
-  assert(("Cannot convert 'handlerArgs_t' to 'PacketBuffers_t*'.", buffer != NULL));
+  ASSERT("Cannot convert 'handlerArgs_t' to 'PacketBuffers_t*'.", buffer != NULL);
 
   size_t hdroffset = 0;
 #ifdef __linux__
   if (sniffer->ETHHeaderIncluded) {
     char* ethHeaderBuffer = malloc(ETH_HEADER_BUFFER_SUFFICIENT_SIZE);
-    assert(("Cannot initialize a new buffer: malloc returned size '0'.", ethHeaderBuffer != NULL));
+    ASSERT("Cannot initialize a new buffer: malloc returned size '0'.", ethHeaderBuffer != NULL);
 
     PrintPacketETHHeader(buffer, &ethHeaderBuffer, ETH_HEADER_BUFFER_SUFFICIENT_SIZE);
     printf("%s ", ethHeaderBuffer);
@@ -178,7 +177,7 @@ ThreadReturnValue_t StartSniffingPackets(ThreadArgs_t args)
     return FAIL_THREAD;
 
   Sniffer_t* sniffer = (Sniffer_t*) args;
-  assert(("Cannot convert 'ThreadArgs_t' to 'Sniffer_t*'.", sniffer != NULL));
+  ASSERT("Cannot convert 'ThreadArgs_t' to 'Sniffer_t*'.", sniffer != NULL);
 
   while (IsRunning) {
     if (LockMainMutex() != 0)

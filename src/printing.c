@@ -1,7 +1,7 @@
 #include "printing.h"
+#include "utils.h"
 
 #include <string.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -13,16 +13,16 @@
 
 void PacketBuffersInit(PacketBuffers_t* p)
 {
-  assert(("Cannot init buffers ('PacketBuffers_t'): p == NULL.", p != NULL));
+  ASSERT("Cannot init buffers ('PacketBuffers_t'): p == NULL.", p != NULL);
 
   p->IPHeaderBuffer = malloc(sizeof(char) * IP_HEADER_BUFFER_SUFFICIENT_SIZE + 1);
-  assert(("Cannot initialize a new buffer: malloc returned size '0'.", p->IPHeaderBuffer != NULL));
+  ASSERT("Cannot initialize a new buffer: malloc returned size '0'.", p->IPHeaderBuffer != NULL);
 
   p->ProtocolHeaderBuffer = malloc(sizeof(char) * PROTOCOL_HEADER_BUFFER_SUFFICIENT_SIZE + 1);
-  assert(("Cannot initialize a new buffer: malloc returned size '0'.", p->ProtocolHeaderBuffer != NULL));
+  ASSERT("Cannot initialize a new buffer: malloc returned size '0'.", p->ProtocolHeaderBuffer != NULL);
 
   p->DataBuffer = malloc(sizeof(char) * DATA_BUFFER_SUFFICIENT_SIZE + 1);
-  assert(("Cannot initialize a new buffer: malloc returned size '0'.", p->DataBuffer != NULL));
+  ASSERT("Cannot initialize a new buffer: malloc returned size '0'.", p->DataBuffer != NULL);
 }
 
 void PacketBuffersDelete(PacketBuffers_t* p)

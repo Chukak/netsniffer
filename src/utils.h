@@ -1,6 +1,8 @@
 #ifndef __UTILS_H
 #define __UTILS_H
 
+#include <assert.h>
+
 /**
  * @brief GetLastErrorMessage
  * @return The last system error message.
@@ -23,4 +25,6 @@ void FormatStringBuffer(char** buffer, const char* msg, ...);
  * @return -1 if an error occurred, otherwise 0.
  */
 int ParseAddressString(const char* address, char** ip, int* port, char** error);
+
+#define ASSERT(msg, cond) assert(((void) msg, cond));
 #endif // __UTILS_H

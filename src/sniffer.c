@@ -43,7 +43,8 @@ static unsigned long WSAIoctlSupperss;
 
 int SnifferInit(Sniffer_t* s, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args)
 {
-  assert(("Cannot init sniffer ('Sniffer_t'): s == NULL.", s != NULL));
+  if (s == NULL)
+    return -1;
 
   for (int i = 0; i < ADDRESSES_MAX_COUNT; ++i) {
     s->Addresses[i].Address.IP[0] = '\0';
@@ -108,7 +109,7 @@ int SnifferInit(Sniffer_t* s, const char* iface, ProcessingPacketHandler_t handl
   s->__bindIP[0] = '\0';
 
   s->__buf = malloc(ETH_MAX_PACKET_SIZE);
-  assert(("Cannot initialize a new network buffer: malloc returned size '0'.", s->__buf != NULL));
+  ASSERT("Cannot initialize a new network buffer: malloc returned size '0'.", s->__buf != NULL);
 
   s->__handler = handler;
   s->__args = args;
@@ -189,7 +190,7 @@ int SnifferStart(Sniffer_t* s)
     strncpy(s->__bindIP, LOOPBACK_ADDRESS, IP_MAX_SIZE);
   } else {
     PIP_ADAPTER_INFO adaptlist = malloc(sizeof(IP_ADAPTER_INFO)), adaptlistNext = NULL;
-    assert(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+    ASSERT(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
     ULONG adaptlistBytes = sizeof(IP_ADAPTER_INFO);
     ULONG getAdaptListRetCode = NO_ERROR;
     do {
@@ -199,7 +200,7 @@ int SnifferStart(Sniffer_t* s)
       case ERROR_BUFFER_OVERFLOW: {
         FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): Error allocating memore needed to call.");
         adaptlist = realloc(adaptlist, adaptlistBytes);
-        assert(("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+        ASSERT(("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
         break;
       }
       case NO_ERROR:

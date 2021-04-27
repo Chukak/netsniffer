@@ -35,7 +35,7 @@ void FormatStringBuffer(char** buffer, const char* msg, ...)
     return;
 
   *buffer = realloc(*buffer, sizeof(char) * (size_t) msgSize + 1);
-  assert(("Cannot initialize a new string: realloc returned 'NULL'.", *buffer != NULL));
+  ASSERT("Cannot initialize a new string: realloc returned 'NULL'.", *buffer != NULL);
 
   vsnprintf(*buffer, (size_t) msgSize + 1, msg, argsCopy);
   (*buffer)[msgSize] = '\0';
@@ -85,7 +85,7 @@ int ParseAddressString(const char* address, char** ip, int* port, char** error)
   }
 
   *ip = malloc(sizeof(char) * (size_t) ipSize + 1);
-  assert(("Cannot initialize a new string: realloc returned 'NULL'.", *ip != NULL));
+  ASSERT("Cannot initialize a new string: realloc returned 'NULL'.", *ip != NULL);
   strncpy(*ip, source, (size_t) ipSize);
   (*ip)[ipSize] = '\0';
 
