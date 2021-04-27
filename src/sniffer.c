@@ -65,10 +65,12 @@ int SnifferInit(Sniffer_t* s, const char* iface, ProcessingPacketHandler_t handl
 #endif
 
 #ifdef __linux__
+  s->ETHHeaderIncluded = false;
+
   s->__sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
   if (s->__sock == -1) {
 #elif _WIN32
-  s->__sock = socket(AF_INET, SOCK_RAW, htons(IPPROTO_IP));
+  s->__sock = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
   if (s->__sock == INVALID_SOCKET) {
 #endif
     FormatStringBuffer(&s->ErrorMessage, "Cannot create a socket: %s", GetLastErrorMessage());
@@ -180,8 +182,9 @@ int SnifferStart(Sniffer_t* s)
   sockAddress = ll;
   szSockAddress = sizeof(struct sockaddr_ll);
 #elif _WIN32
-  s->__ifindex = strtol(s->Interface, NULL, 10);
-  if (s->__ifindex < 0) {
+  char* endptr;
+  s->__ifindex = strtol(s->Interface, &endptr, 10);
+  if (*endptr != '\0' || s->__ifindex < 0) {
     FormatStringBuffer(&s->ErrorMessage, "Invalid interface index: %s.", s->Interface);
     return -1;
   }
@@ -190,7 +193,7 @@ int SnifferStart(Sniffer_t* s)
     strncpy(s->__bindIP, LOOPBACK_ADDRESS, IP_MAX_SIZE);
   } else {
     PIP_ADAPTER_INFO adaptlist = malloc(sizeof(IP_ADAPTER_INFO)), adaptlistNext = NULL;
-    ASSERT(("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+    ASSERT("Cannot initialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL);
     ULONG adaptlistBytes = sizeof(IP_ADAPTER_INFO);
     ULONG getAdaptListRetCode = NO_ERROR;
     do {
@@ -200,7 +203,7 @@ int SnifferStart(Sniffer_t* s)
       case ERROR_BUFFER_OVERFLOW: {
         FormatStringBuffer(&s->ErrorMessage, "GetInfoAdapters(..): Error allocating memore needed to call.");
         adaptlist = realloc(adaptlist, adaptlistBytes);
-        ASSERT(("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL));
+        ASSERT("Cannot reinitialize a new network adapter information: malloc returned size '0'.", adaptlist != NULL);
         break;
       }
       case NO_ERROR:
@@ -328,7 +331,7 @@ int SnifferProcessNextPacket(Sniffer_t* s)
 #ifdef __linux__
       buffer = s->__buf + GetETHHeaderLength(); // ETH_P_ALL
 #elif _WIN32
-      buffer = s->__buf
+      buffer = s->__buf;
 #endif
       IPHeader_t* iphdr = GetIPHeader(buffer);
 
@@ -450,7 +453,7 @@ int SnifferProcessNextPacket(Sniffer_t* s)
   }
   return 0;
 }
-
+#ifdef __linux__
 int SnifferIncludeETHHeader(Sniffer_t* s, bool inc)
 {
   if (s == NULL)
@@ -465,6 +468,7 @@ int SnifferIncludeETHHeader(Sniffer_t* s, bool inc)
 
   return 0;
 }
+#endif
 
 int SnifferStop(Sniffer_t* s)
 {

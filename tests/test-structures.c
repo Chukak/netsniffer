@@ -1,7 +1,11 @@
 #include "testing.h"
 #include "structures.h"
 
+#ifdef __linux__
 #include <time.h>
+#elif _WIN32
+#include <Windows.h>
+#endif
 #include <stdlib.h>
 
 TEST_CASE(TestStructures, GetTimeInfoNow)
@@ -22,7 +26,7 @@ TEST_CASE(TestStructures, GetTimeInfoNow)
   TEST_ASSERT(ti.Seconds == buf.tm_sec, "TimeInfo_t: invalid seconds.");
 
 #elif _WIN32
-  SYSTEMFILE st;
+  SYSTEMTIME st;
   GetLocalTime(&st);
 
   TEST_ASSERT(GetTimeInfoNow(&ti, &error) == 0, "GetTimeInfoNow(..) < 0.");

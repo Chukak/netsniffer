@@ -12,9 +12,10 @@ ParseArgsReturnCode_t ParseCommandLineArgs(int argc, char** argv, CmdArgs_t* arg
     FormatStringBuffer(error, "The pointer to CmdArgs_t == NULL.");
     return CmdArgs_ERROR;
   }
-
+#ifdef __linux__
   args->PromiscMode = false;
   args->IncludeETHHeader = false;
+#endif
   args->Interface[0] = '\0';
 
   for (int i = 0; i < ADDRESSES_MAX_COUNT; ++i)

@@ -89,8 +89,9 @@ int ParseAddressString(const char* address, char** ip, int* port, char** error)
   strncpy(*ip, source, (size_t) ipSize);
   (*ip)[ipSize] = '\0';
 
-  *port = (int) strtol(source + ipSize + 1, NULL, 10);
-  if (*port < 0) {
+  char* endptr;
+  *port = (int) strtol(source + ipSize + 1, &endptr, 10);
+  if (*endptr != '\0' || *port < 0) {
     FormatStringBuffer(error, "Invalid port '%d'.", port);
     free(source);
     return -1;
