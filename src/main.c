@@ -70,10 +70,10 @@ int main(int argc, char** argv)
 
   PacketBuffers_t buffers;
   PacketBuffersInit(&buffers);
-
+#ifdef __linux
   if (args.PromiscMode)
     SetPromiscMode(true);
-
+#endif
   Sniffer_t sniffer;
   if (SnifferInit(&sniffer, args.Protocol, args.Interface, PrintPacket, &buffers) < 0) {
     printf("%s\n", sniffer.ErrorMessage);

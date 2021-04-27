@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 
 #ifdef __linux__
 #include <errno.h>
@@ -23,9 +22,6 @@ static
     DWORD
 #endif
         ErrorMessageBufferSize = 0;
-
-#define TIME_BUFFER_MAX_SIZE 9
-static const char* TIME_FORMAT = "%02d:%02d:%02d";
 
 void FormatStringBuffer(char** buffer, const char* msg, ...)
 {
@@ -102,18 +98,4 @@ int ParseAddressString(const char* address, char** ip, int* port, char** error)
 
   free(source);
   return 0;
-}
-
-int TimestampToString(long unsigned int time, char** buffer)
-{
-  time_t timestamp = (time_t) time;
-  struct tm buf;
-#ifdef __linux__
-  gmtime_r(&timestamp, &buf);
-#elif _WIN32
-  gmtime_s(&buf, &time);
-#endif
-  *buffer = malloc(sizeof(char) * TIME_BUFFER_MAX_SIZE);
-  assert(("Cannot initialize a new string: realloc returned 'NULL'.", *buffer != NULL));
-  return snprintf(*buffer, TIME_BUFFER_MAX_SIZE, TIME_FORMAT, buf.tm_hour, buf.tm_min, buf.tm_sec);
 }

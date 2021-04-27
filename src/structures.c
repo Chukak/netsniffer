@@ -110,10 +110,12 @@ int GetTimeInfoNow(TimeInfo_t* ti, char** error)
   ti->Hours = buf.tm_hour;
   ti->Minutes = buf.tm_min;
   ti->Seconds = buf.tm_sec;
-  ti->Milliseconds = (int) ((double) now.tv_nsec / 1e6);
+
+  static const long l1e6 = 1000000;
+  ti->Milliseconds = (int) (now.tv_nsec / l1e6);
 
 #elif _WIN32
-  static LARGE_INTEGER unixtime;
+  static ULARGE_INTEGER unixtime;
   if (unixtime.QuadPart == 0) {
     FILETIME ft;
     SYSTEMTIME st = {1970, 1, 0, 1, 0, 0, 0, 0};
@@ -124,21 +126,30 @@ int GetTimeInfoNow(TimeInfo_t* ti, char** error)
   }
 
   FILETIME fileTimeNow;
-  GetSystemTimeAsFileTime(&fileTimeNow);
+  {
+    FILETIME fileTimeNowUtc;
+    GetSystemTimeAsFileTime(&fileTimeNowUtc);
+    if (FileTimeToLocalFileTime(&fileTimeNowUtc, &fileTimeNow) == 0) {
+      FormatStringBuffer(error, "Cannot get a local time: %s", GetLastErrorMessage());
+      return -1;
+    }
+  }
 
-  LARGE_INTEGER now;
+  ULARGE_INTEGER now;
   {
     now.LowPart = fileTimeNow.dwLowDateTime;
     now.HighPart = fileTimeNow.dwHighDateTime;
 
     now.QuadPart -= unixtime.QuadPart;
   }
-  ti->TimestampSec = now.QuadPart / 1e7;
-  ti->TimestampNanosec = nowQuadPart % 1e7;
+
+  static const uint32_t ul1e7 = 10000000;
+  ti->TimestampSec = (time_t)(now.QuadPart / ul1e7);
+  ti->TimestampNanosec = (uint32_t)(now.QuadPart % ul1e7);
 
   SYSTEMTIME systemTimeNow;
   if (FileTimeToSystemTime(&fileTimeNow, &systemTimeNow) == 0) {
-    FormatStringBuffer(error, "Cannot convert FILETIME to SYSTEMTIME: %s", GetLastErrorMessage());
+    FormatStringBuffer(error, "Cannot get a system time: %s", GetLastErrorMessage());
     return -1;
   }
 

@@ -14,8 +14,6 @@ typedef void (*ProcessingPacketHandler_t)(void*, Buffer_t, size_t, TimeInfo_t, H
  */
 typedef struct
 {
-  time_t SniffStartTime;                    //! Sniffer start timestamp (not used, always non-initialized)
-  time_t SniffEndTime;                      //! Sniffer end timestamp (not used, always non-initialized)
   Address_t Addresses[ADDRESSES_MAX_COUNT]; //! Addresses in the format 'IP:PORT'
   uint16_t AddressesCount;                  //! Addresses count
   char Interface[IFACE_MAX_SIZE];           //! Interface name (On Windows this field is interface index )

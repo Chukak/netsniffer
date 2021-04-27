@@ -5,7 +5,6 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <time.h>
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -45,9 +44,6 @@ static unsigned long WSAIoctlSupperss;
 int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketHandler_t handler, HandlerArgs_t args)
 {
   assert(("Cannot init sniffer ('Sniffer_t'): s == NULL.", s != NULL));
-
-  s->SniffStartTime = 0;
-  s->SniffEndTime = 0;
 
   s->AddressesCount = 0;
   strncpy(s->Interface, iface, IFACE_MAX_SIZE);
@@ -277,8 +273,6 @@ int SnifferStart(Sniffer_t* s)
 #endif
   s->__running = 1;
 
-  s->SniffStartTime = time(0);
-
   return 0;
 }
 
@@ -478,8 +472,6 @@ int SnifferStop(Sniffer_t* s)
 
   s->__running = 0;
 
-  s->SniffEndTime = time(0);
-
   return 0;
 }
 
@@ -493,7 +485,9 @@ void SnifferClear(Sniffer_t* s)
   free(s->ErrorMessage);
 }
 
+#ifdef __linux__
 void SetPromiscMode(bool enable)
 {
   PromiscModeEnabled = enable;
 }
+#endif
