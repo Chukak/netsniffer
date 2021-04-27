@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 2.8)
 
 project(netsniffer LANGUAGES C)
 
@@ -37,7 +37,8 @@ if (${CMAKE_BUILD_TYPE} MATCHES Debug)
         list(APPEND C_PROJECT_COMPILE_FLAGS -fno-omit-frame-pointer -fsanitize=address)
         list(APPEND C_PROJECT_LINK_FLAGS -lasan)
     endif()
-    list(APPEND C_PROJECT_COMPILE_DEFINITIONS) #  -DNDEBUG
+else()
+    list(APPEND C_PROJECT_COMPILE_DEFINITIONS -DNDEBUG)
 endif()
 
 if (UNIX)
@@ -58,6 +59,8 @@ target_compile_options(${PROJECT_NAME} PUBLIC ${C_PROJECT_COMPILE_FLAGS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${C_PROJECT_LINK_FLAGS})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${C_PROJECT_COMPILE_DEFINITIONS})
 target_include_directories(${PROJECT_NAME} PRIVATE src)
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin COMPONENT binary)
 
 if (TESTS_ENABLED)
     set(PROJECT_TEST_NAME ${PROJECT_NAME}-test)
