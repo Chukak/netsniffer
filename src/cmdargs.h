@@ -20,7 +20,10 @@ typedef enum
  */
 typedef struct
 {
+#ifdef __linux__
   bool PromiscMode;
+  bool IncludeETHHeader;
+#endif
   Protocol_t Protocol;
   char Interface[IFACE_MAX_SIZE];
   char Addresses[ADDRESSES_MAX_COUNT][ADDRESS_MAX_SIZE];

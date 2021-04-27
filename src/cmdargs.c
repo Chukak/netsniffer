@@ -14,6 +14,7 @@ ParseArgsReturnCode_t ParseCommandLineArgs(int argc, char** argv, CmdArgs_t* arg
   }
 
   args->PromiscMode = false;
+  args->IncludeETHHeader = false;
   args->Protocol = Protocol_ANY;
   args->Interface[0] = '\0';
 
@@ -29,6 +30,8 @@ ParseArgsReturnCode_t ParseCommandLineArgs(int argc, char** argv, CmdArgs_t* arg
 #ifdef __linux__
     } else if (strcmp(arg, "-enable-promisc-mode") == 0) {
       args->PromiscMode = true;
+    } else if (strcmp(arg, "-include-eth-header") == 0) {
+      args->IncludeETHHeader = true;
 #endif
     } else if (strcmp(arg, "-help") == 0 || strcmp(arg, "--help") == 0 /* compatibility */) {
       return CmdArgs_PRINT_HELP;
@@ -74,7 +77,8 @@ void PrintHelp()
                         "Arguments: \n"
                         "\t-protocol [ICMP, TCP, UDP]\t\tNetwork protocol. \n"
 #ifdef __linux__
-                        "\t-enable-promisc-mode      \t\tEnable the promiscious mode on the interface.\n"
+                        "\t-enable-promisc-mode      \t\tEnable the promiscious mode on the interface. \n"
+                        "\t-include-eth-header       \t\tShow the Ethernet header of each packet. \n"
 #endif
                         "\n"
                         "To sniffing from any IP and port, use address: any:0.\n"

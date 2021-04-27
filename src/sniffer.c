@@ -83,6 +83,7 @@ int SnifferInit(Sniffer_t* s, Protocol_t p, const char* iface, ProcessingPacketH
     }
   }
   s->__promiscEnabled = false;
+  s->ETHHeaderIncluded = false;
 #elif _WIN32
   if (WSAIoctl(s->__sock,
                (DWORD) FIONBIO,
@@ -319,7 +320,7 @@ int SnifferProcessNextPacket(Sniffer_t* s)
 #ifdef __linux__
       buffer = s->__buf + GetETHHeaderLength(); // ETH_P_ALL
 #elif _WIN32
-      buffer = s->__buf;
+      buffer = s->__buf
 #endif
       IPHeader_t* iphdr = GetIPHeader(buffer);
 
@@ -409,7 +410,11 @@ int SnifferProcessNextPacket(Sniffer_t* s)
           TimeInfo_t tinfo;
           GetTimeInfoNow(&tinfo, &s->ErrorMessage);
 
-          s->__handler(s, s->__buf, (size_t) recvBytes, tinfo, s->__args);
+#ifdef __linux__
+          if (s->ETHHeaderIncluded)
+            buffer = s->__buf;
+#endif
+          s->__handler(s, buffer, (size_t) recvBytes, tinfo, s->__args);
         } else {
           FormatStringBuffer(&s->ErrorMessage, "Handler to processing network packets == 'NULL'.");
           return -1;
@@ -425,6 +430,21 @@ int SnifferProcessNextPacket(Sniffer_t* s)
     FormatStringBuffer(&s->ErrorMessage, "recvfrom(..): %s", GetLastErrorMessage());
     return -1;
   }
+  return 0;
+}
+
+int SnifferIncludeETHHeader(Sniffer_t* s, bool inc)
+{
+  if (s == NULL)
+    return -1;
+
+  if (!s->__running)
+    s->ETHHeaderIncluded = inc;
+  else {
+    FormatStringBuffer(&s->ErrorMessage, "This sniffer was already started.");
+    return -1;
+  }
+
   return 0;
 }
 

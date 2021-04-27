@@ -19,10 +19,13 @@ typedef struct
   char Interface[IFACE_MAX_SIZE];           //! Interface name (On Windows this field is interface index )
   Protocol_t Protocol;                      //! Protocol number value
   char* ErrorMessage;                       //! Error messages
+#ifdef __linux__
+  bool ETHHeaderIncluded;
+#endif
   // private fields
 #ifdef __linux__
   int __sock;
-  int __promiscEnabled;
+  bool __promiscEnabled;
 #elif _WIN32
   SOCKET __sock;
   WSADATA __wsadata;
@@ -72,6 +75,18 @@ int SnifferStart(Sniffer_t* s);
  * @return -1 if an error occurred, otherwise 0.
  */
 int SnifferProcessNextPacket(Sniffer_t* s);
+#ifdef __linux__
+/**
+ * @brief SnifferIncludeETHHeader
+ * Includes the ETH header in the buffer, passed to user-defined handler. Recommended calls this functions before
+ * SnifferStart().
+ * This function is only available on Linux.
+ * @param s The pointer to the sniffer object
+ * @param inc Include the ETH header
+ * @return -1 if an error occurred, otherwise 0.
+ */
+int SnifferIncludeETHHeader(Sniffer_t* s, bool inc);
+#endif
 /**
  * @brief SnifferStop
  * Stops sniffing network packets.
@@ -90,6 +105,7 @@ void SnifferClear(Sniffer_t* s);
 /**
  * @brief SetPromiscMode
  * Enables or disables the promiscious mode on the interface.
+ * This function is only available on Linux.
  * @param enable Enable the promiscious mode
  */
 void SetPromiscMode(bool enable);

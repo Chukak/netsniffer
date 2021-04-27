@@ -3,7 +3,7 @@
 
 #include "structures.h"
 
-#ifndef _WIN32
+#ifdef __linux__
 #define ETH_HEADER_BUFFER_SUFFICIENT_SIZE 256
 #endif
 #define IP_HEADER_BUFFER_SUFFICIENT_SIZE 512
@@ -44,11 +44,11 @@ void PacketBuffersDelete(PacketBuffers_t* p);
  * @param t The pointer to the TimeInfo_t
  */
 void PrintPacketToBuffers(Buffer_t packetBuffer, size_t size, PacketBuffers_t* buffers, TimeInfo_t* t);
-#ifndef _WIN32
+#ifdef __linux__
 /**
  * @brief PrintPacketETHHeader
  * Prints the ETH header of this packet. But, useful to use the PrintPacketBuffers() function instead of it.
- * This function is only available on linux.
+ * This function is only available on Linux.
  * @param packetBuffer The network packet
  * @param ethHeaderBuffer The pointer to the buffer for the ETH header part of this packet
  * @param ethHeaderBufferSize The size of ETH header buffer

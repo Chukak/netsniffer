@@ -71,8 +71,7 @@ int main(int argc, char** argv)
   PacketBuffers_t buffers;
   PacketBuffersInit(&buffers);
 #ifdef __linux
-  if (args.PromiscMode)
-    SetPromiscMode(true);
+  SetPromiscMode(args.PromiscMode);
 #endif
   Sniffer_t sniffer;
   if (SnifferInit(&sniffer, args.Protocol, args.Interface, PrintPacket, &buffers) < 0) {
@@ -88,6 +87,10 @@ int main(int argc, char** argv)
       return 1;
     }
   }
+
+#ifdef __linux__
+  SnifferIncludeETHHeader(&sniffer, args.IncludeETHHeader);
+#endif
 
   if (SnifferStart(&sniffer) < 0) {
     printf("%s\n", sniffer.ErrorMessage);
@@ -149,7 +152,7 @@ PROCESSING_HANDLER_FUNC(PrintPacket, owner, buffer, size, time, args)
 
   size_t hdroffset = 0;
 #ifdef __linux__
-  if (sniffer->Protocol == Protocol_ANY) {
+  if (sniffer->ETHHeaderIncluded) {
     char* ethHeaderBuffer = malloc(ETH_HEADER_BUFFER_SUFFICIENT_SIZE);
     assert(("Cannot initialize a new buffer: malloc returned size '0'.", ethHeaderBuffer != NULL));
 

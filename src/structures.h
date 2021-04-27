@@ -114,7 +114,7 @@ typedef struct
  */
 typedef int8_t* Buffer_t;
 
-#ifndef _WIN32
+#ifdef __linux__
 /**
  * @brief GetETHHeader
  * This function is only available on linux.
