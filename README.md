@@ -50,7 +50,7 @@ Now, try to run the `netsniffer` as root.
 ### Linux
 
 ```bash
-cmake . # for testing, -DTESTS_EANBLED=1 flags
+cmake . # for testing, -DTESTS_ENABLED=1 flags
 make
 sudo make install
 ```
